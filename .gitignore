@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# 虚拟环境
+.venv/
+venv/
+env/
+
+# 环境变量与密钥（绝不入库）
+.env
+.env.*
+# 例外：.env.example 是模板，需要入库供他人参考
+!.env.example
+*.token
+
+# 本地数据库与缓存（运行时生成）
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# 日志
+*.log
+logs/
+
+# 同花顺导出/同步产物（含 cookie 的文件）
+.ths/
+exports/
+
+# 编辑器 / OS
+.idea/
+.vscode/
+.DS_Store

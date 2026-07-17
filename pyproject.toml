@@ -1,0 +1,49 @@
+[project]
+name = "stock-review"
+version = "0.1.0"
+description = "模块化 A股复盘服务：数据源 / 分析维度 / 分组回写 均可插拔扩展"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "sqlalchemy>=2.0",
+    "pandas>=2.0",
+    "typer>=0.12",
+    "pyyaml>=6.0",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+# 数据源扩展（按需装，默认不强制）
+akshare = ["akshare>=1.13"]
+# 开发 / 质量
+dev = ["ruff>=0.4", "mypy>=1.9", "pytest>=8.0"]
+
+[project.scripts]
+stock-review = "stock_review.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stock_review"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_unused_ignores = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

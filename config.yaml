@@ -1,0 +1,23 @@
+# 插件与运行模式配置（系统只读取这些开关，新增扩展无需改主流程）
+plugins:
+  # 启用的数据源（对应 adapters/datasource 下实现，注册名一致）
+  data_sources:
+    - akshare          # 免费，默认
+    # - tushare       # 需 SR_TUSHARE_TOKEN
+    # - platform_api   # cookie 类平台 API 入口
+    # - thx_offline    # 通达信离线行情文件
+
+  # 启用的分析维度（对应 adapters/dimension 下实现）
+  dimensions:
+    - technical        # 技术面：均线 / MACD / RSI / KDJ
+    - breadth          # 市场宽度：涨跌家数 / 涨停跌停
+
+  # 数据仓储模式：realtime_preferred（实时优先，失败回退离线）| offline_only（只读缓存）
+  repository_mode: offline_only
+
+# 同花顺回写配置
+ths:
+  sync_mode: http             # http | file
+  api_base: ""               # 从 .env 的 SR_THS_API_BASE 覆盖
+  cookie: ""                 # 从 .env 的 SR_THS_COOKIE 覆盖（敏感）
+  export_dir: ./.ths/exports  # file 模式导出目录
