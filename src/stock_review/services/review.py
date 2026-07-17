@@ -12,7 +12,7 @@ from stock_review.adapters.dimension.bootstrap import ensure_dimensions
 from stock_review.adapters.repository.composite import CompositeRepository
 from stock_review.core.config import get_settings
 from stock_review.core.registry import dimension_registry
-from stock_review.domain.entities import Stock
+from stock_review.domain.entities import LimitType, Stock
 from stock_review.domain.ports import ReviewContext
 from stock_review.schemas.dto import DimensionResultDTO, ReviewReportDTO
 from stock_review.services.watchlist import WatchlistService
@@ -40,7 +40,27 @@ class ReviewService:
         # 标的选择：指定分组（离线可用）或涨停池（需实时）
         if group_name:
             g = WatchlistService(self.db).get_group(group_name)
-            stocks = [Stock(code=i.code, name=i.name) for i in g.items]
+            stocks = []
+            for i in g.items:
+                ex = i.extra or {}
+                lt_raw = ex.get("limit_type", "")
+                try:
+                    limit_type = LimitType(lt_raw)
+                except ValueError:
+                    limit_type = LimitType.NONE
+                stocks.append(
+                    Stock(
+                        code=i.code,
+                        name=i.name,
+                        price=float(ex.get("price", 0.0)),
+                        change_pct=float(ex.get("change_pct", 0.0)),
+                        boards=int(ex.get("boards", 1)),
+                        reason=ex.get("reason", "") or i.note,
+                        limit_type=limit_type,
+                        theme=ex.get("theme", ""),
+                        tags=ex.get("tags", []),
+                    )
+                )
         else:
             stocks = repo.get_limit_up_pool(trade_date)
 

@@ -18,20 +18,43 @@ class BreadthDimension:
         pool = ctx.stocks
         up = len(pool)
         boards_dist: dict[int, int] = {}
+        board_names: dict[int, list[str]] = {}
         for st in pool:
             boards_dist[st.boards] = boards_dist.get(st.boards, 0) + 1
-        board_rows = [
-            {"连板数": k, "家数": v}
+            board_names.setdefault(st.boards, []).append(st.name or st.code)
+
+        # 连板天梯：连板数 -> 家数 / 代表个股
+        ladder_rows = [
+            {
+                "连板数": f"{k}板" if k >= 2 else ("首板" if k == 1 else "—"),
+                "家数": v,
+                "代表个股": "、".join(board_names[k][:6]),
+            }
             for k, v in sorted(boards_dist.items(), reverse=True)
         ]
+        # 涨停明细：个股 / 连板 / 涨幅 / 涨停原因
+        detail_rows = [
+            {
+                "个股": f"{st.name}({st.code})",
+                "连板": f"{st.boards}板" if st.boards >= 2 else ("首板" if st.boards == 1 else "—"),
+                "涨幅%": round(st.change_pct, 2),
+                "涨停类型": st.limit_type.value or "—",
+                "涨停原因": st.reason or "—",
+            }
+            for st in sorted(pool, key=lambda s: -s.boards)
+        ]
+        max_board = max(boards_dist) if boards_dist else 0
         summary = (
-            f"当日涨停 {up} 家；最高连板 "
-            f"{max(boards_dist) if boards_dist else 0} 板"
+            f"当日涨停 {up} 家；最高连板 {max_board} 板"
+            + ("，市场情绪偏强" if max_board >= 4 else "，连板高度有限")
         )
         return DimensionResult(
             key="breadth",
             title="市场宽度（涨停视角）",
             summary=summary,
-            tables=[{"columns": ["连板数", "家数"], "rows": board_rows}] if board_rows else [],
-            data={"limit_up": up, "max_board": max(boards_dist) if boards_dist else 0},
+            tables=[
+                {"title": "连板天梯", "columns": ["连板数", "家数", "代表个股"], "rows": ladder_rows},
+                {"title": "涨停明细", "columns": ["个股", "连板", "涨幅%", "涨停类型", "涨停原因"], "rows": detail_rows},
+            ],
+            data={"limit_up": up, "max_board": max_board},
         )
