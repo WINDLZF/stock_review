@@ -2,10 +2,11 @@
 plugins:
   # 启用的数据源（对应 adapters/datasource 下实现，注册名一致）
   data_sources:
-    - akshare          # 免费，默认
+    - tdx             # 通达信离线行情文件（无需登录），先跑通流程
+    - akshare         # 免费在线，默认
     # - tushare       # 需 SR_TUSHARE_TOKEN
-    # - platform_api   # cookie 类平台 API 入口
-    # - thx_offline    # 通达信离线行情文件
+    # - platform_api   # cookie 类平台 API 入口（同花顺/开盘啦/短线侠，需登录器取 cookie）
+    # vipdoc 目录用环境变量 SR_TDX_VIPDOC_PATH 覆盖（默认 C:/new_tdx/vipdoc）
 
   # 启用的分析维度（对应 adapters/dimension 下实现）
   dimensions:

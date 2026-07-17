@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>A股复盘 · 行情中心</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  :root {
+    --bg: #0b0f17;
+    --bg-2: #0e1422;
+    --card: rgba(255, 255, 255, 0.035);
+    --card-border: rgba(255, 255, 255, 0.08);
+    --text: #e7ecf3;
+    --text-dim: #9aa6b8;
+    --text-faint: #5e6b80;
+    --accent: #f5b942;
+    --accent-2: #38bdf8;
+    --up: #f5414f;
+    --down: #1bbf83;
+    --radius: 16px;
+    --shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(1200px 600px at 12% -10%, rgba(56, 189, 248, 0.10), transparent 60%),
+      radial-gradient(1000px 500px at 100% 0%, rgba(245, 185, 66, 0.08), transparent 55%),
+      linear-gradient(180deg, var(--bg-2), var(--bg));
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+  }
+  a { color: var(--accent-2); text-decoration: none; }
+
+  header.topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 26px;
+    border-bottom: 1px solid var(--card-border);
+    backdrop-filter: blur(8px);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand .logo {
+    width: 34px; height: 34px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), #ff7a59);
+    box-shadow: 0 6px 18px rgba(245, 185, 66, 0.35);
+    display: grid; place-items: center; font-weight: 800; color: #1a1205;
+  }
+  .brand h1 { font-size: 17px; margin: 0; letter-spacing: 0.5px; }
+  .brand .sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+  .topbar .meta { display: flex; align-items: center; gap: 14px; font-size: 12px; color: var(--text-dim); }
+  .pill {
+    padding: 5px 11px; border-radius: 999px; border: 1px solid var(--card-border);
+    background: var(--card); font-size: 12px; color: var(--text-dim);
+  }
+  .pill b { color: var(--accent); font-weight: 600; }
+
+  main {
+    display: grid; grid-template-columns: 290px 1fr; gap: 20px;
+    padding: 20px 26px; flex: 1; align-items: start;
+  }
+  .panel {
+    background: var(--card); border: 1px solid var(--card-border);
+    border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px;
+  }
+  .panel h2 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 1.2px;
+    color: var(--text-faint); margin: 0 0 14px;
+  }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+  input, select {
+    width: 100%; padding: 10px 12px; border-radius: 10px;
+    background: rgba(0, 0, 0, 0.25); border: 1px solid var(--card-border);
+    color: var(--text); font-size: 14px; outline: none; transition: border-color .15s;
+  }
+  input:focus, select:focus { border-color: var(--accent-2); }
+  .ranges { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ranges button {
+    flex: 1 1 auto; padding: 8px 0; border-radius: 9px; cursor: pointer;
+    background: rgba(255, 255, 255, 0.04); border: 1px solid var(--card-border);
+    color: var(--text-dim); font-size: 13px; transition: all .15s;
+  }
+  .ranges button:hover { color: var(--text); border-color: var(--accent-2); }
+  .ranges button.active {
+    background: linear-gradient(135deg, rgba(245,185,66,.18), rgba(255,122,89,.18));
+    border-color: var(--accent); color: var(--text);
+  }
+  .btn-primary {
+    width: 100%; margin-top: 6px; padding: 11px; border-radius: 10px; cursor: pointer;
+    border: none; font-size: 14px; font-weight: 600; color: #1a1205;
+    background: linear-gradient(135deg, var(--accent), #ff7a59);
+    box-shadow: 0 8px 22px rgba(245, 185, 66, 0.30);
+  }
+  .btn-primary:disabled { opacity: .55; cursor: default; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .chip {
+    padding: 6px 10px; border-radius: 999px; cursor: pointer; font-size: 12px;
+    background: rgba(255, 255, 255, 0.04); border: 1px solid var(--card-border); color: var(--text-dim);
+    transition: all .15s;
+  }
+  .chip:hover { color: var(--text); border-color: var(--accent-2); }
+  .legend { margin-top: 16px; font-size: 11px; color: var(--text-faint); line-height: 1.7; }
+  .legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: middle; margin-right: 5px; }
+  .sw.up { background: var(--up); } .sw.down { background: var(--down); }
+
+  .content { display: flex; flex-direction: column; gap: 18px; }
+  .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+  .stat {
+    background: var(--card); border: 1px solid var(--card-border); border-radius: 14px;
+    padding: 14px 16px; box-shadow: var(--shadow);
+  }
+  .stat .k { font-size: 12px; color: var(--text-dim); }
+  .stat .v { font-size: 22px; font-weight: 700; margin-top: 6px; letter-spacing: .5px; }
+  .stat .v small { font-size: 13px; font-weight: 500; color: var(--text-dim); }
+
+  .chart-card { background: var(--card); border: 1px solid var(--card-border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 8px 10px 14px; }
+  #chart { width: 100%; height: 540px; }
+  .chart-head { display: flex; align-items: baseline; gap: 12px; padding: 10px 12px 4px; }
+  .chart-head .name { font-size: 18px; font-weight: 700; }
+  .chart-head .code { color: var(--text-dim); font-size: 13px; }
+  .chart-head .range { margin-left: auto; color: var(--text-faint); font-size: 12px; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%) translateY(20px);
+    background: #1c2333; border: 1px solid var(--card-border); color: var(--text);
+    padding: 12px 18px; border-radius: 12px; box-shadow: var(--shadow);
+    opacity: 0; pointer-events: none; transition: all .25s; font-size: 13px; z-index: 50;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.err { border-color: var(--up); }
+
+  .loading { color: var(--text-faint); font-size: 13px; padding: 8px 12px; }
+
+  footer { padding: 14px 26px; color: var(--text-faint); font-size: 12px; border-top: 1px solid var(--card-border); }
+
+  @media (max-width: 980px) {
+    main { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    #chart { height: 420px; }
+  }
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">股</div>
+      <div>
+        <h1>A股复盘 · 行情中心</h1>
+        <div class="sub">通达信离线行情 / 多数据源可插拔</div>
+      </div>
+    </div>
+    <div class="meta">
+      <span class="pill">数据源 <b id="srcBadge">—</b></span>
+      <span class="pill" id="clock">--:--:--</span>
+    </div>
+  </header>
+
+  <main>
+    <aside class="panel">
+      <h2>查询</h2>
+      <div class="field">
+        <label>股票代码</label>
+        <input id="code" list="stockList" placeholder="如 600519 / sh600519" value="sh600519" />
+        <datalist id="stockList"></datalist>
+      </div>
+      <div class="field">
+        <label>数据源</label>
+        <select id="source"></select>
+      </div>
+      <div class="field">
+        <label>时间范围</label>
+        <div class="ranges" id="ranges">
+          <button data-n="21">1月</button>
+          <button data-n="63">3月</button>
+          <button data-n="126">6月</button>
+          <button data-n="252" class="active">1年</button>
+          <button data-n="0">全部</button>
+        </div>
+      </div>
+      <button class="btn-primary" id="load">加载行情</button>
+
+      <h2 style="margin-top:22px">自选标的</h2>
+      <div class="chips" id="chips"><span class="loading">加载中…</span></div>
+
+      <div class="legend">
+        <div><span class="sw up"></span>阳线（收盘 ≥ 开盘，A股为涨）</div>
+        <div><span class="sw down"></span>阴线（收盘 &lt; 开盘，A股为跌）</div>
+        <div style="margin-top:8px">数据来自本地 vipdoc；在线源需联网。</div>
+      </div>
+    </aside>
+
+    <section class="content">
+      <div class="stats" id="stats">
+        <div class="stat"><div class="k">最新收盘</div><div class="v" id="sClose">—</div></div>
+        <div class="stat"><div class="k">区间涨跌</div><div class="v" id="sChg">—</div></div>
+        <div class="stat"><div class="k">区间最高</div><div class="v" id="sHigh">—</div></div>
+        <div class="stat"><div class="k">区间最低</div><div class="v" id="sLow">—</div></div>
+        <div class="stat"><div class="k">日均成交量</div><div class="v" id="sVol">—</div></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-head">
+          <span class="name" id="cName">—</span>
+          <span class="code" id="cCode"></span>
+          <span class="range" id="cRange"></span>
+        </div>
+        <div id="chart"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    行情中心 · 离线优先（通达信 .day）｜ API: <code>/api/market/bars</code> · <code>/api/market/stocks</code> · <code>/api/market/sources</code> ｜ 文档 <a href="/docs">/docs</a>
+  </footer>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  let chart = null, fullData = [], curRange = 252;
+
+  function toast(msg, isErr) {
+    const t = $("toast");
+    t.textContent = msg;
+    t.className = "toast show" + (isErr ? " err" : "");
+    clearTimeout(t._t);
+    t._t = setTimeout(() => (t.className = "toast"), 2600);
+  }
+
+  function fmt(n, d = 2) {
+    if (n == null || isNaN(n)) return "—";
+    return Number(n).toLocaleString("zh-CN", { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+  function fmtVol(v) {
+    if (v >= 1e8) return (v / 1e8).toFixed(2) + "亿";
+    if (v >= 1e4) return (v / 1e4).toFixed(2) + "万";
+    return fmt(v, 0);
+  }
+
+  function tick() {
+    $("clock").textContent = new Date().toLocaleTimeString("zh-CN", { hour12: false });
+  }
+  setInterval(tick, 1000); tick();
+
+  async function init() {
+    // 数据源
+    try {
+      const r = await fetch("/api/market/sources");
+      const srcs = await r.json();
+      const sel = $("source");
+      sel.innerHTML = srcs.map(s => `<option value="${s.name}">${s.name}${s.is_local ? "（本地）" : ""}</option>`).join("");
+      if (srcs.length) $("srcBadge").textContent = srcs[0].name;
+    } catch (e) { toast("数据源加载失败", true); }
+
+    // 标的
+    try {
+      const r = await fetch("/api/market/stocks?source=" + ($("source").value || "tdx"));
+      const stocks = await r.json();
+      const dl = $("stockList");
+      dl.innerHTML = stocks.map(s => `<option value="${s.code}">`).join("");
+      const chips = $("chips");
+      if (stocks.length) {
+        chips.innerHTML = stocks.map(s => `<span class="chip" data-code="${s.code}">${s.code}</span>`).join("");
+        chips.querySelectorAll(".chip").forEach(c => c.onclick = () => {
+          $("code").value = c.dataset.code; load();
+        });
+      } else {
+        chips.innerHTML = '<span class="loading">无本地标的，运行 scripts/seed_demo_tdx.py 生成</span>';
+      }
+    } catch (e) { $("chips").innerHTML = '<span class="loading">加载失败</span>'; }
+
+    // 范围按钮
+    $("ranges").querySelectorAll("button").forEach(b => b.onclick = () => {
+      $("ranges").querySelectorAll("button").forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+      curRange = parseInt(b.dataset.n, 10);
+      render();
+    });
+
+    $("load").onclick = load;
+    $("code").addEventListener("keydown", e => { if (e.key === "Enter") load(); });
+
+    if (typeof echarts === "undefined") {
+      toast("图表库加载失败（需联网加载 ECharts CDN）", true);
+    } else {
+      chart = echarts.init($("chart"), null, { renderer: "canvas" });
+      window.addEventListener("resize", () => chart && chart.resize());
+    }
+    load();
+  }
+
+  async function load() {
+    const code = $("code").value.trim();
+    const source = $("source").value || "tdx";
+    if (!code) { toast("请输入股票代码", true); return; }
+    $("srcBadge").textContent = source;
+    const btn = $("load"); btn.disabled = true; btn.textContent = "加载中…";
+    try {
+      const r = await fetch(`/api/market/bars?code=${encodeURIComponent(code)}&source=${encodeURIComponent(source)}`);
+      if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.detail || ("错误 " + r.status)); }
+      fullData = await r.json();
+      if (!fullData.length) { toast("该标的无数据（检查 vipdoc 路径）", true); renderEmpty(); return; }
+      $("cName").textContent = code;
+      $("cCode").textContent = source + " · " + fullData.length + " 根";
+      render();
+    } catch (e) {
+      toast("加载失败：" + e.message, true);
+      renderEmpty();
+    } finally {
+      btn.disabled = false; btn.textContent = "加载行情";
+    }
+  }
+
+  function sliceData() {
+    if (!curRange || curRange <= 0) return fullData;
+    return fullData.slice(-curRange);
+  }
+
+  function renderEmpty() {
+    ["sClose","sChg","sHigh","sLow","sVol"].forEach(id => $(id).textContent = "—");
+    $("cRange").textContent = "";
+    if (chart) chart.clear();
+  }
+
+  function render() {
+    const data = sliceData();
+    if (!data.length) { renderEmpty(); return; }
+    const dates = data.map(d => d.date);
+    const candle = data.map(d => [d.open, d.close, d.low, d.high]);
+    const volumes = data.map((d, i) => ({
+      value: d.volume,
+      itemStyle: { color: d.close >= d.open ? "rgba(245,65,79,0.65)" : "rgba(27,191,131,0.65)" }
+    }));
+
+    // 统计
+    const first = data[0], last = data[data.length - 1];
+    const chg = (last.close - first.open) / first.open * 100;
+    const highs = data.map(d => d.high), lows = data.map(d => d.low);
+    const avgVol = data.reduce((s, d) => s + d.volume, 0) / data.length;
+    const up = chg >= 0;
+    const col = up ? "var(--up)" : "var(--down)";
+    $("sClose").textContent = fmt(last.close);
+    $("sClose").style.color = col;
+    $("sChg").textContent = (up ? "+" : "") + chg.toFixed(2) + "%";
+    $("sChg").style.color = col;
+    $("sHigh").textContent = fmt(Math.max(...highs));
+    $("sLow").textContent = fmt(Math.min(...lows));
+    $("sVol").textContent = fmtVol(avgVol);
+    $("cRange").textContent = dates[0] + " ~ " + dates[dates.length - 1];
+
+    if (!chart) return;
+    chart.setOption({
+      backgroundColor: "transparent",
+      animation: false,
+      grid: [
+        { left: 56, right: 18, top: 16, height: "62%" },
+        { left: 56, right: 18, top: "74%", height: "16%" }
+      ],
+      tooltip: {
+        trigger: "axis", axisPointer: { type: "cross", lineStyle: { color: "rgba(255,255,255,0.25)" } },
+        backgroundColor: "rgba(20,26,38,0.95)", borderColor: "rgba(255,255,255,0.1)",
+        textStyle: { color: "#e7ecf3", fontSize: 12 }
+      },
+      xAxis: [
+        { type: "category", data: dates, gridIndex: 0, axisLine: { lineStyle: { color: "rgba(255,255,255,0.15)" } }, axisLabel: { color: "#9aa6b8" }, splitLine: { show: false } },
+        { type: "category", data: dates, gridIndex: 1, axisLine: { lineStyle: { color: "rgba(255,255,255,0.15)" } }, axisLabel: { show: false }, axisTick: { show: false } }
+      ],
+      yAxis: [
+        { scale: true, gridIndex: 0, splitLine: { lineStyle: { color: "rgba(255,255,255,0.06)" } }, axisLabel: { color: "#9aa6b8" }, axisLine: { show: false } },
+        { scale: true, gridIndex: 1, splitNumber: 2, axisLabel: { color: "#9aa6b8", formatter: v => fmtVol(v) }, splitLine: { show: false }, axisLine: { show: false } }
+      ],
+      dataZoom: [
+        { type: "inside", xAxisIndex: [0, 1], start: 0, end: 100 },
+        { type: "slider", xAxisIndex: [0, 1], bottom: 4, height: 16, borderColor: "transparent",
+          textStyle: { color: "#5e6b80" }, fillerColor: "rgba(56,189,248,0.12)",
+          handleStyle: { color: "#38bdf8" }, dataBackground: { lineStyle: { color: "#2a3346" }, areaStyle: { color: "#1a2233" } } }
+      ],
+      series: [
+        {
+          name: "K线", type: "candlestick", data: candle, xAxisIndex: 0, yAxisIndex: 0,
+          itemStyle: { color: "#f5414f", color0: "#1bbf83", borderColor: "#f5414f", borderColor0: "#1bbf83" }
+        },
+        { name: "成交量", type: "bar", data: volumes, xAxisIndex: 1, yAxisIndex: 1 }
+      ]
+    }, true);
+  }
+
+  init();
+</script>
+</body>
+</html>

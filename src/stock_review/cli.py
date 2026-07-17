@@ -46,6 +46,32 @@ def sync(group: str) -> None:
         db.close()
 
 
+@app.command()
+def bars(
+    code: str = typer.Argument(..., help="股票代码，如 600000 或 sh600000"),
+    source: str = typer.Option("", "--source", "-s", help="数据源名，默认用配置中第一个"),
+    start: str = typer.Option("20240101", "--start", help="起始日期 YYYYMMDD"),
+    end: str = typer.Option("20241231", "--end", help="结束日期 YYYYMMDD"),
+) -> None:
+    """从数据源读取日K线并打印前若干根（验证数据流程）。"""
+    from datetime import datetime as _dt
+
+    from stock_review.adapters.datasource.factory import build_enabled_sources, build_source
+
+    src = build_source(source) if source else build_enabled_sources()[0]
+    start_d = _dt.strptime(start, "%Y%m%d").date()
+    end_d = _dt.strptime(end, "%Y%m%d").date()
+    bs = src.get_daily_bars(code, start_d, end_d)
+    typer.echo(f"数据源={src.name} 共 {len(bs)} 根K线（{code}）")
+    for b in bs[:5]:
+        typer.echo(
+            f"  {b.date.date()} O={b.open:.2f} H={b.high:.2f} "
+            f"L={b.low:.2f} C={b.close:.2f} V={b.volume:.0f} A={b.amount:.0f}"
+        )
+    if len(bs) > 5:
+        typer.echo(f"  ... 其余 {len(bs) - 5} 根")
+
+
 def main() -> None:
     app()
 

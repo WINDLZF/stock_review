@@ -68,6 +68,9 @@ class Settings(BaseSettings):
     ths_api_base: str | None = None
     ths_cookie: str | None = None
 
+    # 通达信离线行情目录（vipdoc），如 C:/new_tdx/vipdoc；可用 SR_TDX_VIPDOC_PATH 覆盖
+    tdx_vipdoc_path: str = "C:/new_tdx/vipdoc"
+
     def __init__(self, **data):
         super().__init__(**data)
         self._plugins = load_plugins(self.config_path)

@@ -32,6 +32,9 @@ logs/
 .ths/
 exports/
 
+# 演示用合成行情（由 scripts/seed_demo_tdx.py 生成，不入库）
+demo_vipdoc/
+
 # 编辑器 / OS
 .idea/
 .vscode/

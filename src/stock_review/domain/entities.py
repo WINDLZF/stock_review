@@ -134,5 +134,3 @@ class ReviewNote:
     content: str = ""
     tags: list[str] = field(default_factory=list)
     extra: dict = field(default_factory=dict)
-</parameter>
-<parameter name="explanation">创建领域实体，包含 Stock/Bar/Quote/Group/GroupItem/ReviewNote，分区设计并预留扩展，分组带语义元数据。

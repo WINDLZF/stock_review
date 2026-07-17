@@ -28,17 +28,20 @@ class CompositeRepository:
         self, code: str, start: date, end: date, *, realtime: bool = False
     ) -> list[Bar]:
         want_realtime = realtime or self.mode == "realtime_preferred"
-        if want_realtime:
-            if self.source is None:
-                raise RuntimeError("未配置可用数据源；离线模式请设 repository_mode=offline_only")
+        if want_realtime and self.source is not None:
             try:
                 bars = self.source.get_daily_bars(code, start, end)
-                self._save_bars(code, bars)
+                # 仅在线源写 DB 缓存；本地离线源（通达信）直接返回，无需落库
+                if not getattr(self.source, "is_local", False):
+                    self._save_bars(code, bars)
                 return bars
             except Exception:
                 if self.mode == "offline_only":
                     raise
                 # 实时失败 → 回退离线
+        # 离线分支：本地离线源直接读文件，其余回退 DB 缓存
+        if self.source is not None and getattr(self.source, "is_local", False):
+            return self.source.get_daily_bars(code, start, end)
         return self._read_bars(code, start, end)
 
     def get_realtime(self, codes: list[str]) -> Any:

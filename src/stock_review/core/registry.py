@@ -50,5 +50,3 @@ class Registry(Generic[T]):
 # 全局注册表实例（各扩展点各一个）
 source_registry: Registry = Registry("data_source")
 dimension_registry: Registry = Registry("analysis_dimension")
-</parameter>
-<parameter name="explanation">创建通用插件注册中心，为数据源和分析维度提供注册式扩展机制。

@@ -5,12 +5,16 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 
-from stock_review.api.routes import health, review, watchlists
+from stock_review.api.routes import health, market, review, watchlists
 from stock_review.core.db import init_db
 from stock_review.core.logging import setup_logging
+
+WEB_INDEX = Path(__file__).resolve().parent.parent / "web" / "index.html"
 
 
 @asynccontextmanager
@@ -25,11 +29,17 @@ app = FastAPI(title="A股复盘服务", version="0.1.0", lifespan=lifespan)
 app.include_router(health.router)
 app.include_router(watchlists.router)
 app.include_router(review.router)
+app.include_router(market.router)
 
 
-@app.get("/")
-def root() -> dict:
-    return {"service": "stock-review", "docs": "/docs"}
+@app.get("/", response_class=FileResponse)
+def index() -> FileResponse:
+    return FileResponse(WEB_INDEX)
+
+
+@app.get("/ui", response_class=FileResponse)
+def ui() -> FileResponse:
+    return FileResponse(WEB_INDEX)
 
 
 if __name__ == "__main__":
