@@ -12,7 +12,7 @@ from typing import Any
 import pandas as pd
 
 from stock_review.core.registry import source_registry
-from stock_review.domain.entities import Bar, Quote, Stock
+from stock_review.domain.entities import Bar, LimitType, Quote, Stock
 from stock_review.domain.ports import MarketDataSource
 
 
@@ -84,22 +84,49 @@ class AKShareSource:
                 )
         return out
 
-    # ── 涨停池（复盘核心输入）──
+    # ── 涨停池（复盘核心输入，akshare 实时真实数据）──
     def get_limit_up_pool(self, trade_date: date) -> list[Stock]:
         ak = _ak()
         df = ak.stock_zt_pool_em(date=trade_date.strftime("%Y%m%d"))
         stocks: list[Stock] = []
         for _, r in df.iterrows():
+            code = str(r["代码"])
+            industry = str(r.get("所属行业", "") or "")
+            first_t = str(r.get("首次封板时间", "") or "")
+            last_t = str(r.get("最后封板时间", "") or "")
+            open_times = int(r.get("炸板次数", 0) or 0)
+            boards = int(r.get("连板数", 1) or 1)
+            # 轻量形态判定：仅依据拉取的封板时间，不做行情计算
+            if first_t and last_t and first_t == last_t and first_t <= "093000":
+                limit_type = LimitType.ONE_WORD
+            elif open_times == 0 and first_t and first_t == last_t:
+                limit_type = LimitType.T_WORD
+            else:
+                limit_type = LimitType.TURNOVER
             stocks.append(
                 Stock(
-                    code=str(r["代码"]),
+                    code=code,
                     name=str(r["名称"]),
-                    price=float(r["收盘价"]),
+                    price=float(r["最新价"]),
                     change_pct=float(r["涨跌幅"]),
-                    limit_up_time=str(r.get("涨停时间", "") or ""),
-                    open_times=int(r.get("打开次数", 0) or 0),
-                    boards=int(r.get("连板数", 1) or 1),
-                    reason=str(r.get("涨停原因类别", "") or ""),
+                    limit_up_time=last_t,
+                    open_times=open_times,
+                    limit_type=limit_type,
+                    boards=boards,
+                    reason=industry,
+                    theme=industry,
+                    extra={
+                        "order": int(r.get("序号", 0) or 0),
+                        "industry": industry,
+                        "zt_stat": str(r.get("涨停统计", "") or ""),
+                        "first_time": first_t,
+                        "last_time": last_t,
+                        "seal_amount": float(r.get("封板资金", 0) or 0),
+                        "amount": float(r.get("成交额", 0) or 0),
+                        "float_mv": float(r.get("流通市值", 0) or 0),
+                        "total_mv": float(r.get("总市值", 0) or 0),
+                        "turnover": float(r.get("换手率", 0) or 0),
+                    },
                 )
             )
         return stocks

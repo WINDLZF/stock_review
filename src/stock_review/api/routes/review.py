@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/review", tags=["review"])
 
 @router.get("", response_model=ReviewReportDTO)
 def review(
-    trade_date: date = Query(..., description="复盘交易日，如 2026-07-18"),
+    trade_date: date | None = Query(None, description="复盘交易日，如 2026-07-18；缺省取最近交易日"),
     group: str | None = Query(None, description="指定分组名则对其成员做复盘（离线可用）"),
     db: Session = Depends(get_db),
 ) -> ReviewReportDTO:

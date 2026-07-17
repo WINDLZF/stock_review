@@ -1,20 +1,21 @@
 # 插件与运行模式配置（系统只读取这些开关，新增扩展无需改主流程）
 plugins:
   # 启用的数据源（对应 adapters/datasource 下实现，注册名一致）
+  # 顺序即优先级：realtime_preferred 模式下取第一个可用源；akshare 免费在线、默认优先
   data_sources:
-    - tdx             # 通达信离线行情文件（无需登录），先跑通流程
-    - akshare         # 免费在线，默认
+    - akshare         # 免费在线，默认优先（涨停池/日K/实时快照）
+    - tdx             # 通达信离线行情文件（无需登录），作为离线回退
     # - tushare       # 需 SR_TUSHARE_TOKEN
     # - platform_api   # cookie 类平台 API 入口（同花顺/开盘啦/短线侠，需登录器取 cookie）
     # vipdoc 目录用环境变量 SR_TDX_VIPDOC_PATH 覆盖（默认 C:/new_tdx/vipdoc）
 
   # 启用的分析维度（对应 adapters/dimension 下实现）
   dimensions:
-    - technical        # 技术面：均线 / MACD / RSI / KDJ
-    - breadth          # 市场宽度：涨跌家数 / 涨停跌停
+    - breadth          # 市场宽度：连板天梯 / 涨停明细（真实数据）
+    - sector           # 板块热点：按所属行业聚合涨停分布（真实数据）
 
   # 数据仓储模式：realtime_preferred（实时优先，失败回退离线）| offline_only（只读缓存）
-  repository_mode: offline_only
+  repository_mode: realtime_preferred
 
 # 同花顺回写配置
 ths:

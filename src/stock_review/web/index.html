@@ -6,133 +6,142 @@
 <title>A股复盘总结</title>
 <style>
   :root{
-    --bg:#f4f5f7; --card:#ffffff; --ink:#1f2329; --sub:#6b7280; --line:#eceef1;
-    --navy:#1f2a44; --navy2:#2c3e5c; --gold:#c8a45c;
-    --up:#e23a3a; --down:#1a9e5a; --flat:#8a8f99;
-    --chip:#f1f3f6;
+    --bg:#0f1320; --card:#171c2c; --ink:#e8ebf2; --sub:#9aa3b8; --line:#262d42;
+    --navy:#11182b; --gold:#d7b15a;
+    --up:#f0495b; --down:#1ec98b; --flat:#9aa3b8;
+    --chip:#1d2438; --accent:#3b82f6;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
     font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
     font-size:14px;line-height:1.6;}
-  .topbar{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;
-    padding:18px 26px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;}
-  .brand{font-size:20px;font-weight:700;letter-spacing:.5px;display:flex;align-items:center;gap:10px}
-  .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 4px rgba(200,164,92,.25)}
-  .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-  .controls label{font-size:13px;color:#d7dce6;display:flex;flex-direction:column;gap:4px}
-  .controls input,.controls select{font:inherit;padding:7px 10px;border-radius:8px;border:1px solid #3a4a66;background:#fff;color:var(--ink);min-width:150px}
-  .controls button{margin-top:18px;padding:9px 20px;border:0;border-radius:8px;cursor:pointer;
-    background:var(--gold);color:#1f2329;font-weight:700;font-size:14px;transition:.15s}
-  .controls button:hover{filter:brightness(1.06)}
-  .controls button:disabled{opacity:.6;cursor:default}
-  main{max-width:1080px;margin:0 auto;padding:22px 18px 60px}
-  .banner{background:#fff7e6;border:1px solid #ffe1a8;color:#8a5a00;padding:10px 14px;border-radius:10px;margin-bottom:18px;font-size:13px}
-  .overview{background:var(--card);border-radius:14px;padding:20px 22px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid var(--line)}
+  .topbar{background:linear-gradient(135deg,#0d1322,#1a2238);color:#fff;
+    padding:16px 26px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;
+    border-bottom:1px solid var(--line);}
+  .brand{font-size:19px;font-weight:700;letter-spacing:.5px;display:flex;align-items:center;gap:10px}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 4px rgba(215,177,90,.22)}
+  .brand small{color:var(--sub);font-weight:400;font-size:12px;margin-left:6px}
+  .controls{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+  .controls label{font-size:12px;color:var(--sub);display:flex;flex-direction:column;gap:5px}
+  .controls input{font:inherit;padding:8px 11px;border-radius:9px;border:1px solid var(--line);background:#0e1422;color:var(--ink)}
+  .controls button{padding:9px 22px;border:0;border-radius:9px;cursor:pointer;
+    background:linear-gradient(135deg,var(--gold),#e7c878);color:#1a1408;font-weight:800;font-size:14px;transition:.15s}
+  .controls button:hover{filter:brightness(1.05)}
+  .controls button:disabled{opacity:.55;cursor:default}
+  main{max-width:1180px;margin:0 auto;padding:22px 18px 60px}
+  .src{font-size:12px;color:var(--sub);margin:0 0 16px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+  .src .tag{background:var(--chip);border:1px solid var(--line);border-radius:20px;padding:3px 11px}
+  .overview{background:var(--card);border-radius:14px;padding:20px 22px;margin-bottom:18px;border:1px solid var(--line)}
   .ov-row{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
   .ov-date{font-size:26px;font-weight:800}
   .ov-time{color:var(--sub);font-size:13px}
-  .ov-summary{margin-top:14px;padding:12px 14px;border-left:4px solid var(--gold);background:#fbf7ec;border-radius:0 10px 10px 0;color:#5a4a22;font-size:14px}
-  .chips{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
-  .chip{background:var(--chip);border-radius:10px;padding:10px 14px;min-width:96px}
+  .ov-summary{margin-top:14px;padding:12px 14px;border-left:4px solid var(--gold);background:#1d1c12;border-radius:0 10px 10px 0;color:#e7d9a8;font-size:14px}
+  .chips{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
+  .chip{background:var(--chip);border:1px solid var(--line);border-radius:12px;padding:11px 16px;min-width:104px}
   .chip .k{color:var(--sub);font-size:12px}
-  .chip .v{font-size:20px;font-weight:800;margin-top:2px}
-  .dim{background:var(--card);border-radius:14px;padding:18px 20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid var(--line)}
+  .chip .v{font-size:22px;font-weight:800;margin-top:2px}
+  .dim{background:var(--card);border-radius:14px;padding:18px 20px;margin-bottom:16px;border:1px solid var(--line)}
   .dim-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
-  .dim-idx{background:var(--navy);color:#fff;width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+  .dim-idx{background:linear-gradient(135deg,#2a3656,#3b4d7a);color:#fff;width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
   .dim-title{font-size:17px;font-weight:700}
-  .dim-summary{margin:8px 0 14px;padding:10px 12px;border-left:4px solid var(--gold);background:#fbf7ec;border-radius:0 8px 8px 0;color:#5a4a22}
-  .tbl-title{font-size:13px;color:var(--sub);margin:10px 0 6px;font-weight:600}
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
-  th{background:#fafbfc;color:var(--sub);font-weight:600;position:sticky;top:0}
-  tbody tr:hover{background:#fafcff}
+  .dim-summary{margin:8px 0 12px;padding:10px 12px;border-left:4px solid var(--gold);background:#1d1c12;border-radius:0 8px 8px 0;color:#e7d9a8}
+  .tbl-title{font-size:13px;color:var(--gold);margin:12px 0 6px;font-weight:700;letter-spacing:.3px}
+  .tbl-wrap{overflow:auto;border:1px solid var(--line);border-radius:10px}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:760px}
+  th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{background:#11182b;color:var(--sub);font-weight:600;position:sticky;top:0;font-size:12px}
+  tbody tr:hover{background:#1b2236}
   .num{font-variant-numeric:tabular-nums;text-align:right}
   .up{color:var(--up);font-weight:600}
   .down{color:var(--down);font-weight:600}
   .flat{color:var(--flat)}
-  .bar{display:inline-block;height:8px;border-radius:4px;background:linear-gradient(90deg,#d9b977,#c8a45c);vertical-align:middle;margin-left:8px}
-  .status{padding:30px;text-align:center;color:var(--sub)}
-  .err{background:#fff1f0;border:1px solid #ffccc7;color:#a8071a;padding:14px 16px;border-radius:10px}
+  .board{display:inline-block;min-width:34px;text-align:center;padding:1px 7px;border-radius:6px;font-weight:700;font-size:12px}
+  .board.hi{background:rgba(240,73,91,.16);color:#ff8190}
+  .board.mid{background:rgba(215,177,90,.16);color:#e7c878}
+  .board.lo{background:rgba(154,163,184,.14);color:var(--sub)}
+  .bar{display:inline-block;height:8px;border-radius:4px;background:linear-gradient(90deg,#b88a2f,#d7b15a);vertical-align:middle;margin-left:8px}
+  .status{padding:40px;text-align:center;color:var(--sub)}
+  .err{background:#2a1416;border:1px solid #5b2230;color:#ff8b97;padding:14px 16px;border-radius:10px}
+  .empty{background:#1a2236;border:1px dashed var(--line);color:var(--sub);padding:22px;border-radius:10px;text-align:center}
   .hidden{display:none}
   .foot{text-align:center;color:var(--sub);font-size:12px;margin-top:30px}
 </style>
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><span class="dot"></span>A股复盘总结</div>
+    <div class="brand"><span class="dot"></span>A股复盘总结<small>真实数据 · akshare 实时</small></div>
     <div class="controls">
       <label>交易日<input type="date" id="dt" /></label>
-      <label>股票池<select id="group"><option>加载中…</option></select></label>
       <button id="go">生成复盘</button>
     </div>
   </header>
 
   <main>
-    <div class="banner">演示数据：合成行情 + 「演示池」分组，仅用于预览复盘报告的结构与形态。接真实数据源（通达信 vipdoc / akshare）后即为日常复盘产出。</div>
+    <div class="src">
+      <span class="tag">数据来源：akshare（东方财富）实时涨停池</span>
+      <span class="tag">未做指标计算，仅展示真实拉取数据</span>
+      <span class="tag" id="src-date"></span>
+    </div>
     <div id="status" class="status">正在加载…</div>
     <section id="overview" class="overview hidden"></section>
     <div id="report"></div>
-    <div class="foot">数据来源 /api/review · 维度由 config.yaml 驱动、注册表自动发现</div>
+    <div class="foot">接口 /api/review · 维度由 config.yaml 驱动、注册表自动发现</div>
   </main>
 
 <script>
 const $ = (s) => document.querySelector(s);
 
-function today(){ return new Date().toISOString().slice(0,10); }
+function defaultDate(){
+  const d = new Date();
+  while(d.getDay()===0 || d.getDay()===6){ d.setDate(d.getDate()-1); } // 回退到周五
+  return d.toISOString().slice(0,10);
+}
 function pctClass(v){ if(v>0) return 'up'; if(v<0) return 'down'; return 'flat'; }
 function isNum(x){ return typeof x==='number' && isFinite(x); }
 function fmt(v){
   if(v===null||v===undefined||v==='') return '—';
   if(typeof v==='number'){
-    if(Math.abs(v)>=1000) return v.toLocaleString('zh-CN');
+    if(Number.isInteger(v)) return v.toLocaleString('zh-CN');
     return (Math.round(v*100)/100).toString();
   }
   return v;
 }
 
-// 根据列名与值决定单元格着色
-function cellClass(col, v){
-  if(!isNum(v)) return '';
-  if(col==='涨幅%'||col==='涨幅'||col==='change_pct') return pctClass(v);
-  if(col==='rsi14'){ if(v>=70) return 'up'; if(v<=30) return 'down'; return ''; }
-  if(col==='macd'){ return v>0?'up':'down'; }
-  return '';
+// 连板徽标
+function boardBadge(v){
+  const m = String(v).match(/^(\d+)板$/);
+  if(!m) return `<span class="board lo">${v}</span>`;
+  const n = parseInt(m[1],10);
+  const cls = n>=4 ? 'hi' : (n>=2 ? 'mid' : 'lo');
+  return `<span class="board ${cls}">${v}</span>`;
 }
-
-async function loadGroups(){
-  try{
-    const r = await fetch('/api/watchlists');
-    const groups = await r.json();
-    const sel = $('#group');
-    sel.innerHTML = '';
-    if(!groups.length){
-      sel.innerHTML = '<option value="">（无分组）</option>';
-      return;
-    }
-    for(const g of groups){
-      const o = document.createElement('option');
-      o.value = g.name; o.textContent = `${g.name}（${g.size}只）`;
-      sel.appendChild(o);
-    }
-    // 默认选中演示池
-    const demo = groups.find(g=>g.name==='演示池');
-    if(demo) sel.value = '演示池';
-  }catch(e){
-    $('#group').innerHTML = '<option>加载失败</option>';
+// 单元格着色：涨跌幅、连板
+function cellHTML(col, v){
+  if(col==='涨跌幅%' && isNum(v)){
+    return `<td class="num ${pctClass(v)}">${fmt(v)}</td>`;
   }
+  if(col==='连板'){
+    return `<td>${boardBadge(v)}</td>`;
+  }
+  const numCls = isNum(v) ? 'num' : '';
+  let cls = numCls;
+  if(col==='涨停家数' && isNum(v)){
+    const bar = `<span class="bar" style="width:${Math.min(v,15)*7}px"></span>`;
+    return `<td class="${numCls}">${fmt(v)}${bar}</td>`;
+  }
+  return `<td class="${cls}">${fmt(v)}</td>`;
 }
 
 function renderOverview(report){
   const ov = $('#overview');
   const breadth = report.dimensions.find(d=>d.key==='breadth');
-  const tech = report.dimensions.find(d=>d.key==='technical');
+  const sector = report.dimensions.find(d=>d.key==='sector');
   const chips = [];
   if(breadth && breadth.data){
     chips.push(['涨停家数', breadth.data.limit_up ?? '—']);
-    chips.push(['最高连板', breadth.data.max_board ?? '—']);
+    chips.push(['最高连板', (breadth.data.max_board ?? '—') + (breadth.data.max_board ? ' 板' : '')]);
   }
-  if(tech && tech.data) chips.push(['技术样本', tech.data.count ?? '—']);
+  if(sector && sector.data) chips.push(['涨停行业', sector.data.sectors ?? '—']);
   chips.push(['维度', report.dimensions.length]);
 
   const genAt = report.generated_at ? new Date(report.generated_at).toLocaleString('zh-CN') : '—';
@@ -152,18 +161,13 @@ function renderOverview(report){
 function renderTable(tbl){
   const cols = tbl.columns || [];
   const rows = tbl.rows || [];
+  if(!rows.length) return `<div class="tbl-title">${tbl.title||''}</div><div class="empty">本表无数据</div>`;
   let h = `<div class="tbl-title">${tbl.title||''}</div>`;
-  h += '<div style="overflow:auto"><table><thead><tr>' +
+  h += '<div class="tbl-wrap"><table><thead><tr>' +
        cols.map(c=>`<th>${c}</th>`).join('') + '</tr></thead><tbody>';
   for(const row of rows){
     h += '<tr>';
-    for(const c of cols){
-      const v = row[c];
-      const cls = cellClass(c, v);
-      const numCls = isNum(v) ? 'num' : '';
-      const bar = (c==='家数' && isNum(v)) ? `<span class="bar" style="width:${Math.min(v,12)*8}px"></span>` : '';
-      h += `<td class="${[cls,numCls].filter(Boolean).join(' ')}">${fmt(v)}${bar}</td>`;
-    }
+    for(const c of cols){ h += cellHTML(c, row[c]); }
     h += '</tr>';
   }
   h += '</tbody></table></div>';
@@ -173,6 +177,10 @@ function renderTable(tbl){
 function renderReport(report){
   const box = $('#report');
   box.innerHTML = '';
+  if(!report.dimensions.length){
+    box.innerHTML = '<div class="empty">当日无复盘维度数据</div>';
+    return;
+  }
   report.dimensions.forEach((dim,i)=>{
     const tables = (dim.tables||[]).map(renderTable).join('');
     const div = document.createElement('section');
@@ -189,38 +197,37 @@ function renderReport(report){
 }
 
 async function run(){
-  const dt = $('#dt').value || today();
-  const grp = $('#group').value;
+  const dt = $('#dt').value || defaultDate();
   const btn = $('#go');
-  $('#status').textContent = '正在生成复盘…';
+  $('#status').textContent = '正在拉取真实数据并生成复盘…';
   $('#status').classList.remove('hidden');
   $('#overview').classList.add('hidden');
   $('#report').innerHTML = '';
   btn.disabled = true;
   try{
-    const url = `/api/review?trade_date=${encodeURIComponent(dt)}` +
-                (grp ? `&group=${encodeURIComponent(grp)}` : '');
+    const url = `/api/review?trade_date=${encodeURIComponent(dt)}`;
     const r = await fetch(url);
-    if(!r.ok){
-      const msg = await r.text();
-      throw new Error(msg || ('HTTP '+r.status));
-    }
+    if(!r.ok){ const msg = await r.text(); throw new Error(msg || ('HTTP '+r.status)); }
     const report = await r.json();
     $('#status').classList.add('hidden');
+    if(!report.dimensions || !report.dimensions.length){
+      $('#report').innerHTML = '<div class="empty">当日无数据（可能为非交易日）</div>';
+      return;
+    }
     renderOverview(report);
     renderReport(report);
   }catch(e){
     $('#status').className = 'status';
-    $('#status').innerHTML = `<div class="err">复盘生成失败：${e.message}` +
-      `<br/>若提示分组不存在，请先运行 <code>python scripts/seed_demo_tdx.py</code> 生成「演示池」。</div>`;
+    $('#status').innerHTML = `<div class="err">复盘生成失败：${e.message}</div>`;
   }finally{
     btn.disabled = false;
   }
 }
 
-$('#dt').value = today();
+$('#dt').value = defaultDate();
+$('#src-date').textContent = '默认交易日：' + $('#dt').value;
 $('#go').addEventListener('click', run);
-loadGroups().then(()=>{ /* 自动生成一次 */ run(); });
+run();
 </script>
 </body>
 </html>

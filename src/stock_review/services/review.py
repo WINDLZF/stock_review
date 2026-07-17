@@ -5,7 +5,7 @@
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from sqlalchemy.orm import Session
 
 from stock_review.adapters.dimension.bootstrap import ensure_dimensions
@@ -18,11 +18,21 @@ from stock_review.schemas.dto import DimensionResultDTO, ReviewReportDTO
 from stock_review.services.watchlist import WatchlistService
 
 
+def latest_trading_day() -> date:
+    """推断最近交易日：周末回退到周五；节假日靠数据源返回空来体现。"""
+    d = date.today()
+    while d.weekday() >= 5:  # 5=周六 6=周日
+        d -= timedelta(days=1)
+    return d
+
+
 class ReviewService:
     def __init__(self, db: Session):
         self.db = db
 
-    def run_review(self, trade_date: date, group_name: str | None = None) -> ReviewReportDTO:
+    def run_review(self, trade_date: date | None = None, group_name: str | None = None) -> ReviewReportDTO:
+        if trade_date is None:
+            trade_date = latest_trading_day()
         ensure_dimensions()
         s = get_settings()
 

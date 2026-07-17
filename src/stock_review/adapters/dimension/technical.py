@@ -1,92 +1,64 @@
-"""技术面维度：均线 / MACD / RSI / KDJ。
+"""板块热点维度：按 akshare 涨停池的「所属行业」聚合涨停分布。
 
-指标用 pandas 手算（不依赖 pandas-ta，减少依赖）；新增维度只需在同级加模块并
-@dimension_registry.register，复盘流程自动纳入，无需改核心代码。
+纯展示真实数据（行业、涨停家数、封板资金、代表个股），不做指标计算；
+指标计算（如行业强度评分）作为后续增强。
 """
 from __future__ import annotations
 
-from datetime import date, timedelta
-
-import pandas as pd
-
 from stock_review.core.registry import dimension_registry
-from stock_review.domain.entities import Bar
 from stock_review.domain.ports import AnalysisDimension, DimensionMeta, DimensionResult, ReviewContext
 
 
-def _ma(series: pd.Series, n: int) -> pd.Series:
-    return series.rolling(n).mean()
-
-
-def _rsi(close: pd.Series, n: int = 14) -> pd.Series:
-    delta = close.diff()
-    gain = delta.clip(lower=0).rolling(n).mean()
-    loss = -delta.clip(upper=0).rolling(n).mean()
-    rs = gain / loss.replace(0, pd.NA)
-    return (100 - 100 / (1 + rs)).fillna(100)
-
-
-def _macd(close: pd.Series) -> pd.Series:
-    ema12 = close.ewm(span=12, adjust=False).mean()
-    ema26 = close.ewm(span=26, adjust=False).mean()
-    dif = ema12 - ema26
-    dea = dif.ewm(span=9, adjust=False).mean()
-    return (dif - dea) * 2  # MACD 柱
-
-
-def _kdj(df: pd.DataFrame) -> tuple[pd.Series, pd.Series, pd.Series]:
-    low_n = df["low"].rolling(9).min()
-    high_n = df["high"].rolling(9).max()
-    rsv = (df["close"] - low_n) / (high_n - low_n).replace(0, pd.NA) * 100
-    k = rsv.ewm(com=2, adjust=False).mean()
-    d = k.ewm(com=2, adjust=False).mean()
-    j = 3 * k - 2 * d
-    return k, d, j
-
-
-@dimension_registry.register("technical")
-class TechnicalDimension:
+@dimension_registry.register("sector")
+class SectorDimension:
     def meta(self) -> DimensionMeta:
-        return DimensionMeta(key="technical", title="技术面", description="均线/MACD/RSI/KDJ", order=10)
+        return DimensionMeta(key="sector", title="板块热点", description="行业涨停分布", order=5)
 
     def compute(self, ctx: ReviewContext) -> DimensionResult:
-        if ctx.repository is None:
-            return DimensionResult(key="technical", title="技术面", summary="无数据仓储，跳过")
-
-        end = ctx.trade_date
-        start = end - timedelta(days=180)
-        rows: list[dict] = []
-        for st in ctx.stocks[:30]:  # 限制样本量，避免长耗时
-            bars = ctx.repository.get_bars(st.code, start, end)
-            if len(bars) < 30:
-                continue
-            df = pd.DataFrame(
-                [{"date": b.date, "open": b.open, "high": b.high, "low": b.low, "close": b.close}
-                for b in bars]
-            ).set_index("date")
-            close = df["close"]
-            ma20 = _ma(close, 20).iloc[-1]
-            ma60 = _ma(close, 60).iloc[-1]
-            macd = _macd(close).iloc[-1]
-            rsi = _rsi(close).iloc[-1]
-            k, d, j = _kdj(df)
-            rows.append(
-                {
-                    "code": st.code,
-                    "name": st.name,
-                    "close": round(close.iloc[-1], 2),
-                    "ma20": round(float(ma20), 2),
-                    "ma60": round(float(ma60), 2),
-                    "trend": "多头" if close.iloc[-1] > ma20 > ma60 else ("空头" if close.iloc[-1] < ma20 < ma60 else "震荡"),
-                    "macd": round(float(macd), 3),
-                    "rsi14": round(float(rsi), 1),
-                    "kdj_j": round(float(j.iloc[-1]), 1),
-                }
+        pool = ctx.stocks
+        if not pool:
+            return DimensionResult(
+                key="sector",
+                title="板块热点（行业分布）",
+                summary="当日无涨停数据，无法统计板块分布。",
+                tables=[],
+                data={"sectors": 0},
             )
+
+        by_ind: dict[str, dict] = {}
+        for st in pool:
+            ind = (st.extra or {}).get("industry") or st.theme or "其他"
+            d = by_ind.setdefault(ind, {"count": 0, "seal": 0.0, "names": []})
+            d["count"] += 1
+            d["seal"] += float((st.extra or {}).get("seal_amount", 0.0) or 0.0)
+            d["names"].append(st.name)
+
+        rows = [
+            {
+                "行业": ind,
+                "涨停家数": d["count"],
+                "封板资金(亿)": round(d["seal"] / 1e8, 1),
+                "代表个股": "、".join(d["names"][:6]),
+            }
+            for ind, d in by_ind.items()
+        ]
+        rows.sort(key=lambda x: (-x["涨停家数"], -x["封板资金(亿)"]))
+
+        top = rows[0] if rows else None
+        summary = (
+            f"共 {len(rows)} 个行业出现涨停"
+            + (f"；最热：{top['行业']}（{top['涨停家数']} 家）" if top else "")
+        )
         return DimensionResult(
-            key="technical",
-            title="技术面（近 30 只样本）",
-            summary=f"已计算 {len(rows)} 只；多头排列需 close>ma20>ma60",
-            tables=[{"columns": list(rows[0].keys()), "rows": rows}] if rows else [],
-            data={"count": len(rows)},
+            key="sector",
+            title="板块热点（行业分布）",
+            summary=summary,
+            tables=[
+                {
+                    "title": "行业涨停分布",
+                    "columns": ["行业", "涨停家数", "封板资金(亿)", "代表个股"],
+                    "rows": rows,
+                }
+            ],
+            data={"sectors": len(rows)},
         )
