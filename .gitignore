@@ -32,6 +32,11 @@ logs/
 .ths/
 exports/
 
+# 登录 cookie（持久化但绝不入库；代码入库、secret 分离）
+.secrets/
+*.cookies.json
+cookies.json
+
 # 演示用合成行情（由 scripts/seed_demo_tdx.py 生成，不入库）
 demo_vipdoc/
 

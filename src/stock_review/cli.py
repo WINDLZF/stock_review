@@ -47,6 +47,34 @@ def sync(group: str) -> None:
 
 
 @app.command()
+def login(
+    platform: str = typer.Argument("ths", help="平台：ths(同花顺)/kpl(开盘啦)/dxr(短线侠)"),
+    ttl: int = typer.Option(0, "--ttl", help="cookie 有效期秒，0=不强制过期（会话级 cookie 建议设 86400）"),
+) -> None:
+    """登录平台并持久化 cookie（解决『每天重写登录模块』：过期只需重跑本命令）。"""
+    from stock_review.core.auth import LoginManager
+
+    mgr = LoginManager()
+    cookies = mgr.ensure(platform, interactive=True, ttl=ttl)
+    if cookies:
+        typer.echo(f"[{platform}] 登录成功，已持久化 {len(cookies)} 个 cookie 到 .secrets/{platform}.json")
+    else:
+        typer.echo(f"[{platform}] 登录失败，未获取到 cookie", err=True)
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def logout(
+    platform: str = typer.Argument("ths", help="平台：ths/kpl/dxr"),
+) -> None:
+    """清除指定平台的持久化 cookie（下次操作会要求重新登录）。"""
+    from stock_review.core.auth import LoginManager
+
+    LoginManager().forget(platform)
+    typer.echo(f"[{platform}] 已清除持久化 cookie")
+
+
+@app.command()
 def bars(
     code: str = typer.Argument(..., help="股票代码，如 600000 或 sh600000"),
     source: str = typer.Option("", "--source", "-s", help="数据源名，默认用配置中第一个"),

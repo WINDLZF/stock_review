@@ -19,6 +19,8 @@ dependencies = [
 [project.optional-dependencies]
 # 数据源扩展（按需装，默认不强制）
 akshare = ["akshare>=1.13"]
+# 浏览器登录捕获 cookie（实浏览器，含验证码/短信场景）
+auth = ["playwright>=1.40"]
 # 开发 / 质量
 dev = ["ruff>=0.4", "mypy>=1.9", "pytest>=8.0"]
 

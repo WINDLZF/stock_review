@@ -48,6 +48,31 @@ class MarketDataSource(Protocol):
         """基本面/财务快照。"""
         ...
 
+    # ── v2 可选能力：平台「预计算」数据（取源不重算的核心）──
+    # 不支持的源对这些方法抛 NotImplementedError，由上层做能力探测/回退。
+    def get_precomputed_indicators(self, code: str) -> dict[str, Any]:
+        """预计算技术指标（MA/MACD/RSI/KDJ/BOLL），取自同花顺/通达信/东财。
+
+        取源不重算：优先用平台算好的；本地计算仅作离线兜底。
+        """
+        ...
+
+    def get_market_sentiment(self, trade_date: date) -> dict[str, Any]:
+        """市场情绪（封板率/涨停家数/跌停家数/连板梯队），取自开盘啦。"""
+        ...
+
+    def get_emotion_cycle(self, trade_date: date) -> dict[str, Any]:
+        """情绪周期值 + 昨日涨停溢价率，取自短线侠。"""
+        ...
+
+    def get_limit_up_reason(self, trade_date: date) -> dict[str, Any]:
+        """涨停原因 / 题材标签 / 题材强度，取自开盘啦题材库。"""
+        ...
+
+    def get_dragon_tiger(self, trade_date: date) -> list[dict[str, Any]]:
+        """龙虎榜席位（机构/游资人设），取自开盘啦。"""
+        ...
+
 
 # ═══════════════════════ 2. 离线/实时仓储扩展 ═══════════════════════
 @runtime_checkable

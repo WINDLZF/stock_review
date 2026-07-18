@@ -12,6 +12,20 @@ from stock_review.domain.entities import Group
 from stock_review.domain.ports import GroupSyncPort, SyncResult
 
 
+def _resolve_ths_cookie() -> str:
+    """cookie 解析顺序：配置/环境变量 → 本仓库持久化登录 cookie（非交互读取）。
+
+    这样 `stock-review login` 一次后，后续 sync 自动带最新 cookie，无需手动填 .env。
+    """
+    try:
+        from stock_review.core.auth import LoginManager, to_cookie_header
+
+        cookies = LoginManager().load("ths")
+        return to_cookie_header(cookies) if cookies else ""
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def _to_payload(group: Group) -> dict:
     return {
         "group_name": group.name,
@@ -31,7 +45,7 @@ class ThsHttpSync:
     def __init__(self, api_base: str | None = None, cookie: str | None = None):
         s = get_settings().ths
         self.api_base = (api_base or s.api_base or "").rstrip("/")
-        self.cookie = cookie or s.cookie or ""
+        self.cookie = cookie or s.cookie or _resolve_ths_cookie()
 
     def sync_group(self, group: Group, *, replace: bool = True) -> SyncResult:
         if not self.api_base or not self.cookie:

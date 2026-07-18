@@ -32,6 +32,15 @@ class ThsConfig(BaseModel):
     export_dir: str = "./.ths/exports"
 
 
+class RulesConfig(BaseModel):
+    """config.yaml 的 rules: 段：铁律 / 阈值 / 权重（可不断优化）。
+
+    以原始 dict 暴露，交给 core/rules.py 做类型化解析。
+    """
+
+    raw: dict = Field(default_factory=dict)
+
+
 def _load_yaml(path: Path) -> dict:
     p = Path(path)
     if not p.exists():
@@ -48,6 +57,11 @@ def load_plugins(path: Path) -> PluginConfig:
         dimensions=plugins.get("dimensions", ["technical", "breadth"]),
         repository_mode=plugins.get("repository_mode", "offline_only"),
     )
+
+
+def load_rules(path: Path) -> dict:
+    cfg = _load_yaml(path)
+    return cfg.get("rules", {}) or {}
 
 
 class Settings(BaseSettings):
@@ -74,10 +88,15 @@ class Settings(BaseSettings):
     def __init__(self, **data):
         super().__init__(**data)
         self._plugins = load_plugins(self.config_path)
+        self._rules = load_rules(self.config_path)
 
     @property
     def plugins(self) -> PluginConfig:
         return self._plugins
+
+    @property
+    def rules(self) -> dict:
+        return self._rules
 
     @property
     def ths(self) -> ThsConfig:

@@ -23,3 +23,48 @@ ths:
   api_base: ""               # 从 .env 的 SR_THS_API_BASE 覆盖
   cookie: ""                 # 从 .env 的 SR_THS_COOKIE 覆盖（敏感）
   export_dir: ./.ths/exports  # file 模式导出目录
+
+# ─────────────────────────────────────────────────────────────
+# 规则中心（可不断优化）：铁律 / 阈值 / 权重集中在此，调参只改这里
+# ─────────────────────────────────────────────────────────────
+rules:
+  # 板块推演引擎参数：情绪定位 → 主线判定 → 空间板命运 → 题材推演 → 预案
+  inference:
+    emotion_high: 70            # 情绪周期值 ≥ 此 视为高潮期
+    emotion_low: 30             # ≤ 此 视为冰点期
+    confuse_band: [40, 60]      # 落在此区间视为分歧期
+    space_watch_boards: 5       # 空间板连板数 ≥ 此 关注断板风险
+    mainline_min_seal_ratio: 0.25  # 主线封板资金占全市场比 ≥ 此 才算主线
+
+  # 淘股吧六大铁律校验（severity: high/medium/low；enabled: 可单独开关）
+  validator:
+    - id: space_break
+      name: 空间板断板
+      rule: "最高连板数较前日下降 且 该票跌幅 > 5%"
+      severity: high
+      enabled: true
+    - id: ladder_gap
+      name: 梯队断层
+      rule: "连板梯队出现 > 2 板的断层（如 5 板后直接到 2 板）"
+      severity: high
+      enabled: true
+    - id: seal_rate_drop
+      name: 封板率/溢价下滑
+      rule: "封板率 < 55% 或 昨日涨停溢价率 < 1%"
+      severity: medium
+      enabled: true
+    - id: limit_down_cluster
+      name: 跌停集中
+      rule: "跌停家数 ≥ 15 或 出现批量核按钮"
+      severity: high
+      enabled: true
+    - id: inst_retail_resonance
+      name: 机构游资共振
+      rule: "龙虎榜买方同时出现机构与一线游资（加分项）"
+      severity: low
+      enabled: true
+    - id: position_converge
+      name: 仓位收敛
+      rule: "分歧/退潮期 建议单票仓位 ≤ 50%"
+      severity: medium
+      enabled: true
