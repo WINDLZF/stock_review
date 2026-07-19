@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A股涨停复盘</title>
+<link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://unpkg.com/element-plus"></script>
+<style>
+:root {
+  --bg: #f5f6f8; --card: #fff; --red: #e0392b; --green: #15a257;
+  --blue: #409eff; --purple: #722ed1; --gold: #fa8c16;
+  --text: #1f1f1f; --text2: #8c8c8c; --border: #e8e8e8; --radius: 6px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); font-size:13px; }
+.topbar { background:var(--card); padding:10px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; flex-wrap:wrap; position:sticky; top:0; z-index:100; box-shadow:var(--shadow); }
+.topbar h1 { font-size:18px; font-weight:700; margin-right:8px; white-space:nowrap; }
+.topbar .ts { color:var(--text2); font-size:12px; }
+.toolbar { background:var(--card); padding:8px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.toolbar .stat { margin-left:auto; color:var(--text2); font-size:12px; }
+.echelon { display:flex; flex-wrap:wrap; gap:6px; padding:12px 20px; background:var(--card); border-bottom:1px solid var(--border); align-items:center; }
+.echelon .ech-label { font-weight:600; font-size:13px; margin-right:4px; }
+.ech-chip { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:12px; font-size:12px; font-weight:600; white-space:nowrap; }
+.ech-chip .n { font-size:11px; opacity:0.8; }
+.layout { display:flex; gap:0; max-width:100%; }
+.main { flex:1; min-width:0; padding:12px 16px; }
+.side { width:300px; flex-shrink:0; padding:12px 16px 12px 0; position:sticky; top:90px; align-self:flex-start; max-height:calc(100vh - 100px); overflow-y:auto; }
+@media(max-width:900px){ .side{display:none} }
+.fam-section { padding:12px 0 4px; font-size:14px; font-weight:700; color:var(--text2); border-bottom:2px solid var(--border); margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+.fam-section .dot { display:inline-block; width:10px; height:10px; border-radius:50%; }
+.fam-section .meta { font-weight:400; font-size:12px; }
+.topic { background:var(--card); border-radius:var(--radius); margin-bottom:12px; border:1px solid var(--border); border-left:4px solid var(--blue); overflow:hidden; box-shadow:var(--shadow); }
+.topic.st { border-left-color: var(--red); }
+.topic.other { border-left-color: var(--text2); }
+.topic-head { padding:10px 14px; background:#fafafa; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.topic-head .tname { font-size:15px; font-weight:700; }
+.topic-head .tcnt { background:var(--red); color:#fff; border-radius:10px; padding:1px 8px; font-size:11px; }
+.members { padding:8px 14px; }
+.members table { width:100%; border-collapse:collapse; font-size:12px; }
+.members th { padding:6px 8px; background:#fafafa; border-bottom:2px solid var(--border); text-align:left; font-weight:600; }
+.members td { padding:5px 8px; border-bottom:1px solid var(--border); }
+.members tr:hover { background:#fafafa; }
+.st-name { color:var(--purple); font-weight:600; }
+.tag { display:inline-block; padding:1px 5px; border-radius:3px; font-size:10px; margin:1px 3px 1px 0; }
+.tag-bd { background:#fff2e8; color:#d46b08; }
+.tag-first { background:#e6f7ff; color:#1677ff; }
+.tag-word { background:#f9f0ff; color:#722ed1; }
+.hot-panel { background:var(--card); border-radius:var(--radius); border:1px solid var(--border); margin-bottom:12px; box-shadow:var(--shadow); }
+.hot-panel h3 { font-size:13px; padding:10px 14px; border-bottom:1px solid var(--border); background:#fafafa; font-weight:600; }
+.hot-item { display:flex; justify-content:space-between; padding:6px 14px; border-bottom:1px dashed var(--border); font-size:12px; cursor:default; }
+.hot-item:last-child { border-bottom:none; }
+.hot-item .idx { color:var(--text2); width:20px; }
+.hot-item:nth-child(-n+3) .idx { color:var(--red); font-weight:700; }
+.hot-item .hot-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.hot-item .hot-rate { color:var(--text2); font-size:11px; white-space:nowrap; }
+.empty { text-align:center; padding:60px; color:var(--text2); }
+.empty .ico { font-size:48px; margin-bottom:12px; }
+.table-panel { background:var(--card); border-radius:var(--radius); border:1px solid var(--border); margin-top:16px; box-shadow:var(--shadow); }
+.table-panel h3 { font-size:13px; padding:10px 14px; border-bottom:1px solid var(--border); background:#fafafa; font-weight:600; }
+.kpi-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:10px; padding:12px 20px; background:var(--card); border-bottom:1px solid var(--border); }
+.kpi { text-align:center; padding:10px; }
+.kpi .val { font-size:26px; font-weight:700; }
+.kpi .lbl { font-size:11px; color:var(--text2); margin-top:2px; }
+.compare-bar { display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding:10px 20px; background:#fbfdff; border-bottom:1px solid var(--border); }
+.cmp-title { font-weight:700; font-size:13px; color:var(--blue); white-space:nowrap; }
+.cmp-stats { display:flex; gap:8px; flex-wrap:wrap; }
+.cmp-chip { padding:2px 10px; border-radius:12px; font-size:12px; font-weight:600; white-space:nowrap; }
+.cmp-chip.ok { background:#e6f7ec; color:#15a257; }
+.cmp-chip.warn { background:#fff7e6; color:#d46b08; }
+.cmp-chip.bad { background:#fff1f0; color:#cf1322; }
+.cmp-src { display:flex; gap:6px; flex-wrap:wrap; margin-left:auto; }
+.cmp-src-chip { padding:2px 8px; border-radius:4px; font-size:11px; background:#f0f2f5; color:var(--text2); white-space:nowrap; }
+.cmp-conflicts { flex-basis:100%; background:#fff; border:1px dashed #ffccc7; border-radius:var(--radius); padding:8px 12px; margin-top:4px; }
+.cmp-conf-title { font-size:12px; font-weight:600; color:#cf1322; margin-bottom:4px; }
+.cmp-conf-row { font-size:12px; padding:2px 0; color:var(--text); }
+.cmp-conf-row .cmp-conf-src { display:inline-block; margin:0 6px; padding:0 6px; background:#fafafa; border:1px solid var(--border); border-radius:3px; }
+.cmp-badge { display:inline-block; padding:0 4px; margin-left:4px; font-size:10px; border-radius:3px; }
+.cmp-badge.conf { background:#fff1f0; color:#cf1322; }
+.cmp-badge.single { background:#fff7e6; color:#d46b08; }
+.cmp-badge.multi { background:#e6f7ec; color:#15a257; }
+
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <h1>📊 A股涨停复盘</h1>
+    <span class="ts" id="dt">--</span>
+    <span class="ts" style="margin-left:auto">更新 {{updateTime}}</span>
+    <button @click="loadData" :disabled="loading" style="padding:4px 12px;border:1px solid var(--border);background:var(--card);border-radius:var(--radius);cursor:pointer;font-size:12px">🔄 刷新</button>
+  </div>
+
+  <div class="toolbar">
+    <input v-model="searchKw" placeholder="搜索代码/名称/板块..." style="flex:1;max-width:300px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px"/>
+    <span class="stat">涨停 <b style="color:var(--red)">{{pool.total}}</b> 只 | 首板 <b>{{pool.firstBoard}}</b> | 连板 <b style="color:var(--gold)">{{pool.multiBoard}}</b> | 最高 <b style="color:var(--red)">{{pool.maxBoard}}板</b> | 板块 <b>{{pool.themeCount}}</b></span>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi"><div class="val" style="color:var(--red)">{{pool.total}}</div><div class="lbl">涨停总数</div></div>
+    <div class="kpi"><div class="val" style="color:var(--blue)">{{pool.firstBoard}}</div><div class="lbl">首板</div></div>
+    <div class="kpi"><div class="val" style="color:var(--gold)">{{pool.multiBoard}}</div><div class="lbl">连板股</div></div>
+    <div class="kpi"><div class="val" style="color:var(--red)">{{pool.maxBoard}}板</div><div class="lbl">最高连板</div></div>
+    <div class="kpi"><div class="val">{{pool.themeCount}}</div><div class="lbl">涉及板块</div></div>
+    <div class="kpi" v-if="pool.st"><div class="val" style="color:var(--purple)">{{pool.st}}</div><div class="lbl">ST涨停</div></div>
+  </div>
+
+  <div class="echelon">
+    <span class="ech-label">连板梯队</span>
+    <span class="ech-chip" v-for="t in echelons" :key="t.n" :style="{background:t.bg, color:t.fg}">{{t.n}}板 <span class="n">{{t.cnt}}只</span></span>
+    <span v-if="!echelons.length" style="color:var(--text2)">暂无数据</span>
+  </div>
+
+  <div class="compare-bar" v-if="compare && compare.total">
+    <span class="cmp-title">🔀 多源对账</span>
+    <span class="cmp-stats">
+      <span class="cmp-chip ok">✅ 共识 {{compare.consensus_count}}</span>
+      <span class="cmp-chip warn">⚠️ 单源孤证 {{compare.single_count}}</span>
+      <span class="cmp-chip bad">❗ 分歧 {{compare.conflict_count}}</span>
+    </span>
+    <span class="cmp-src">
+      <span class="cmp-src-chip" v-for="(cnt,src) in compare.per_source_counts" :key="src">{{srcDisp(src)}} {{cnt}}只</span>
+    </span>
+    <div class="cmp-conflicts" v-if="compare.conflicts && compare.conflicts.length">
+      <div class="cmp-conf-title">连板数分歧（默认以主源「{{primarySrc}}」为准，请人工复核）</div>
+      <div class="cmp-conf-row" v-for="c in compare.conflicts" :key="c.code">
+        <b>{{c.name}}</b>({{c.code}})：
+        <span class="cmp-conf-src" v-for="(v,k) in c.board_by_source" :key="k">{{srcDisp(k)}}={{v}}板</span>
+        → 采用 <b>{{c.resolved}}板</b>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="layout">
+    <div class="main">
+      <div v-if="loading" class="empty"><div class="ico">⏳</div>加载中...</div>
+      <div v-else-if="!groupedTopics || !Object.keys(groupedTopics).length" class="empty"><div class="ico">📭</div>暂无数据</div>
+      <template v-for="(group, fam) in groupedTopics" :key="fam">
+        <div class="fam-section" v-if="fam">
+          <span class="dot" :style="{background:familyColor(fam)}"></span>
+          {{fam}}
+          <span class="meta">({{group.length}}题材 · {{group.reduce((s,t)=>s+t.stocks.length,0)}}只)</span>
+        </div>
+        <div v-for="t in group" :key="t.name" class="topic" :class="{st:t.isSt, other:t.isOther}">
+          <div class="topic-head" :style="{borderLeftColor:familyColor(t.family)||'var(--blue)'}">
+            <span class="tname">{{t.name}}</span>
+            <span class="tcnt">{{t.stocks.length}}只涨停</span>
+          </div>
+          <div class="members">
+            <table>
+              <thead><tr><th>代码</th><th>名称</th><th>连板</th><th>类型</th><th>封板</th><th>原因</th></tr></thead>
+              <tbody>
+                <tr v-for="s in t.stocks" :key="s.code" @click="onStockClick(s)" style="cursor:pointer">
+                  <td style="font-family:monospace;color:var(--text2)">{{s.code}}</td>
+                  <td :class="{'st-name':s.is_st}">{{s.name}}</td>
+                  <td><span :style="{color:s.boards>1?'var(--red)':''}">{{s.boards}}板</span></td>
+                  <td><span class="tag tag-word" v-if="s.limit_type&&s.limit_type!=='换手板'">{{s.limit_type}}</span></td>
+                  <td style="color:var(--text2)">{{s.limit_up_time||'-'}}</td>
+                  <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{s.reason||'-'}}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </template>
+
+      <div class="table-panel">
+        <h3>涨停明细 ({{filteredStocks.length}}只)</h3>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:left">代码</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:left">名称</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:left">连板</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:left">类型</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:left">封板</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:left">原因</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:left">板块</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:left">标签</th>
+            </tr></thead>
+            <tbody>
+              <tr v-for="s in filteredStocks" :key="s.code" @click="onStockClick(s)" style="cursor:pointer;border-bottom:1px solid var(--border)">
+                <td style="padding:5px 8px;font-family:monospace;color:var(--text2)">{{s.code}}</td>
+                <td style="padding:5px 8px" :class="{'st-name':s.is_st}">{{s.name}}</td>
+                <td style="padding:5px 8px"><span :style="{color:s.boards>1?'var(--red)':'',fontWeight:s.boards>1?'700':''}">{{s.boards}}板</span>
+                  <span v-if="s.extra && s.extra.board_conflict" class="cmp-badge conf" title="多源连板数分歧，请人工复核">⚠️分歧</span>
+                  <span v-else-if="s.extra && s.extra.single_source" class="cmp-badge single" title="仅单一来源出现（孤证）">单源</span>
+                  <span v-else-if="s.extra && s.extra.sources && s.extra.sources.length>1" class="cmp-badge multi" title="多源共识">✓多源</span>
+                </td>
+                <td style="padding:5px 8px"><span class="tag tag-word" v-if="s.limit_type&&s.limit_type!=='换手板'">{{s.limit_type}}</span></td>
+                <td style="padding:5px 8px;color:var(--text2)">{{s.limit_up_time||'-'}}</td>
+                <td style="padding:5px 8px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{s.reason||'-'}}</td>
+                <td style="padding:5px 8px">{{s.theme||'-'}}</td>
+                <td style="padding:5px 8px">
+                  <span v-if="s.boards>1" class="tag tag-bd">{{s.boards}}连板</span>
+                  <span v-else class="tag tag-first">首板</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="hot-panel" v-if="hotTopics.length">
+        <h3>🔥 热点话题</h3>
+        <div class="hot-item" v-for="(t,i) in hotTopics.slice(0,15)" :key="i">
+          <span class="idx">{{i+1}}</span>
+          <span class="hot-name" :title="t.title">{{t.title||''}}</span>
+          <span class="hot-rate">{{heatFmt(t.rate)}}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const { createApp, ref, computed, onMounted } = Vue;
+
+const FAMILY_COLORS = { "科技AI": "#1677ff", "高端制造": "#52c41a", "大消费": "#fa8c16", "周期资源": "#722ed1" };
+
+const app = createApp({
+  setup() {
+    const loading = ref(false);
+    const searchKw = ref('');
+    const updateTime = ref('');
+    const pool = ref({total:0, firstBoard:0, multiBoard:0, maxBoard:0, themeCount:0, st:0});
+    const allStocks = ref([]);
+    const topics = ref([]);
+    const hotTopics = ref([]);
+    const compare = ref(null);
+    const sourcesUsed = ref([]);
+
+    const SRC_DISP = { dxr:'短线侠·涨停榜', dxr_kp:'短线侠·连板榜', akshare:'东方财富' };
+    const primarySrc = 'dxr';
+    function srcDisp(s) { return SRC_DISP[s] || s; }
+    function familyColor(fam) { return FAMILY_COLORS[fam] || '#909399'; }
+    function heatFmt(v) { if (!v) return ''; const n = Number(v); return n >= 10000 ? (n/10000).toFixed(1)+'万' : n+''; }
+    function onStockClick(s) { window.open('https://www.iwencai.com/unifiedwap/result?w='+s.code+'&querytype=stock', '_blank'); }
+
+    const echelons = computed(() => {
+      const map = {};
+      for (const s of allStocks.value) {
+        const n = s.boards || 1;
+        map[n] = (map[n] || 0) + 1;
+      }
+      const COLORS = [[8,'#a8071a','#fff'],[6,'#cf1322','#fff'],[5,'#f5222d','#fff'],[4,'#fa541c','#fff'],[3,'#fa8c16','#fff'],[2,'#fadb14','#333'],[1,'#e6f7ff','#1677ff']];
+      return Object.entries(map).map(([n,cnt]) => {
+        const bp = parseInt(n);
+        const c = COLORS.find(e => bp >= e[0]) || COLORS[COLORS.length-1];
+        return {n:bp, cnt, bg:c[1], fg:c[2]};
+      }).sort((a,b) => b.n - a.n);
+    });
+
+    const filteredTopics = computed(() => {
+      const kw = searchKw.value.toLowerCase().trim();
+      if (!kw) return topics.value;
+      return topics.value.filter(t => {
+        if (t.name && t.name.toLowerCase().includes(kw)) return true;
+        return (t.stocks || []).some(s =>
+          (s.code||'').includes(kw) || (s.name||'').toLowerCase().includes(kw) || (s.reason||'').includes(kw)
+        );
+      });
+    });
+
+    const groupedTopics = computed(() => {
+      const groups = {};
+      for (const t of filteredTopics.value) {
+        const fam = t.family || '__other__';
+        if (!groups[fam]) groups[fam] = [];
+        groups[fam].push(t);
+      }
+      return groups;
+    });
+
+    const filteredStocks = computed(() => {
+      const kw = searchKw.value.toLowerCase().trim();
+      if (!kw) return allStocks.value;
+      return allStocks.value.filter(s =>
+        (s.code||'').includes(kw) || (s.name||'').toLowerCase().includes(kw) ||
+        (s.reason||'').includes(kw) || (s.theme||'').includes(kw)
+      );
+    });
+
+    async function loadData() {
+      loading.value = true;
+      try {
+        const [poolRes, hotRes] = await Promise.all([
+          fetch('/api/zt/pool'),
+          fetch('/api/zt/hot')
+        ]);
+        const data = await poolRes.json();
+        const s = data.summary || {};
+        pool.value = {
+          total: s.total||0, firstBoard: s.first_board||0, multiBoard: s.multi_board||0,
+          maxBoard: s.max_board||0, themeCount: s.theme_count||0, st: s.st||0,
+        };
+        allStocks.value = data.stocks || [];
+        compare.value = data.compare || null;
+        sourcesUsed.value = data.sources_used || [];
+        topics.value = (data.topics || []).map(t => ({
+          name: t.name, stocks: t.stocks || [], family: t.family || '',
+          isSt: t.name === 'ST板块', isOther: t.name === '其他',
+        }));
+        try {
+          const hot = await hotRes.json();
+          hotTopics.value = (hot.topics || []).filter(t => t.title);
+        } catch(e) { hotTopics.value = []; }
+        updateTime.value = new Date().toLocaleTimeString();
+      } catch(e) {
+        console.error('loadData error', e);
+      } finally { loading.value = false; }
+    }
+
+    onMounted(loadData);
+
+    return { loading, searchKw, updateTime, pool, allStocks, topics, hotTopics, compare, sourcesUsed,
+             echelons, groupedTopics, filteredTopics, filteredStocks,
+             familyColor, heatFmt, srcDisp, primarySrc, onStockClick, loadData };
+  }
+});
+app.mount('#app');
+</script>
+</body>
+</html>

@@ -10,11 +10,11 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 
-from stock_review.api.routes import health, market, review, watchlists
+from stock_review.api.routes import health, market, review, watchlists, zt
 from stock_review.core.db import init_db
 from stock_review.core.logging import setup_logging
 
-WEB_INDEX = Path(__file__).resolve().parent.parent / "web" / "index.html"
+WEB_INDEX = Path(__file__).resolve().parent.parent / "web" / "zt_review.html"
 
 
 @asynccontextmanager
@@ -30,6 +30,7 @@ app.include_router(health.router)
 app.include_router(watchlists.router)
 app.include_router(review.router)
 app.include_router(market.router)
+app.include_router(zt.router)
 
 
 @app.get("/", response_class=FileResponse)

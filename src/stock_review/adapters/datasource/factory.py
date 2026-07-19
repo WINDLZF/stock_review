@@ -11,7 +11,7 @@ def ensure_sources() -> None:
 
     新增数据源时在此追加 import 即可；akshare 的 akshare 包是懒加载，模块导入不强制装包。
     """
-    from stock_review.adapters.datasource import akshare_source, tdx_source  # noqa: F401
+    from stock_review.adapters.datasource import akshare_source, dxr_source, tdx_source  # noqa: F401
 
 
 def build_source(name: str) -> MarketDataSource:

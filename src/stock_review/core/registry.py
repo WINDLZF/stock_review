@@ -50,3 +50,4 @@ class Registry(Generic[T]):
 # 全局注册表实例（各扩展点各一个）
 source_registry: Registry = Registry("data_source")
 dimension_registry: Registry = Registry("analysis_dimension")
+connector_registry: Registry = Registry("platform_connector")

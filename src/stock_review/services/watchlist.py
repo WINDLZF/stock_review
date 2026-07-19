@@ -13,6 +13,7 @@ from stock_review.domain.entities import Group
 from stock_review.domain.ports import SyncResult
 from stock_review.models.orm import GroupItemORM, GroupORM
 from stock_review.schemas.dto import GroupCreate, GroupItemRead, GroupRead
+from stock_review.services.mappers import orm_to_domain_group
 
 
 class WatchlistService:
@@ -105,9 +106,7 @@ class WatchlistService:
         from stock_review.adapters.ths import build_sync  # noqa: PLC0415
 
         g = self._must(name)
-        domain: Group = __import__(
-            "stock_review.services.mappers", fromlist=["orm_to_domain_group"]
-        ).orm_to_domain_group(g)
+        domain: Group = orm_to_domain_group(g)
         result = build_sync().sync_group(domain, replace=True)
         if result.ok and result.detail and isinstance(result.detail, dict) and "id" in result.detail:
             g.ths_group_id = str(result.detail["id"])

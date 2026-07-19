@@ -5,7 +5,9 @@
 """
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime, timedelta
+
 from sqlalchemy.orm import Session
 
 from stock_review.adapters.dimension.bootstrap import ensure_dimensions
@@ -16,6 +18,8 @@ from stock_review.domain.entities import LimitType, Stock
 from stock_review.domain.ports import ReviewContext
 from stock_review.schemas.dto import DimensionResultDTO, ReviewReportDTO
 from stock_review.services.watchlist import WatchlistService
+
+logger = logging.getLogger(__name__)
 
 
 def latest_trading_day() -> date:
@@ -43,6 +47,11 @@ class ReviewService:
 
             source = first_source()
         except Exception:  # noqa: BLE001
+            logger.warning(
+                "数据源初始化失败，将以离线模式运行（涨停池等实时数据不可用）。"
+                "请检查网络连接与数据源配置。",
+                exc_info=True,
+            )
             source = None
 
         repo = CompositeRepository(source, self.db, mode=s.plugins.repository_mode)

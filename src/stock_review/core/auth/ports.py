@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import Any, Protocol, runtime_checkable
 
+from stock_review.core.auth.providers import LoginResult
+
 
 @runtime_checkable
 class LoginProvider(Protocol):
@@ -15,6 +17,13 @@ class LoginProvider(Protocol):
     name: str
     login_url: str
 
-    def login(self, *, interactive: bool = True) -> dict[str, Any]:
-        """执行登录并返回 cookies（name->value）。interactive=True 时引导用户完成登录。"""
+    def login(self, *, interactive: bool = True, timeout: int = 600) -> LoginResult:
+        """执行登录并返回 LoginResult（cookies + storage_state）。
+        interactive=True 时引导用户完成登录；
+        timeout 控制自动等待/人工确认的总时限（秒）。"""
+        ...
+
+    def verify(self, storage_state: dict[str, Any], *, timeout: int = 20) -> dict[str, Any]:
+        """用已保存的 storage_state 验证登录态是否有效。
+        返回 {ok, http_status, logged_in, reason, cookie_count, ls_keys}。"""
         ...

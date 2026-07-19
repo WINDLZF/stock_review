@@ -7,4 +7,4 @@ from __future__ import annotations
 
 
 def ensure_dimensions() -> None:
-    from stock_review.adapters.dimension import breadth, technical  # noqa: F401
+    from stock_review.adapters.dimension import breadth, sector  # noqa: F401

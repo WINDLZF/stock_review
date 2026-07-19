@@ -38,6 +38,8 @@ def _market_of(code: str) -> str:
 @source_registry.register("akshare")
 class AKShareSource:
     name = "akshare"
+    display = "东方财富"
+    is_online = True
 
     # ── 日K线 ──
     def get_daily_bars(self, code: str, start: date, end: date) -> list[Bar]:
