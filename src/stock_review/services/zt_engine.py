@@ -153,7 +153,7 @@ def _matches_sep(sep: str, s: Stock, ctx: dict) -> bool:
     if sep == "强势股":
         return s.boards < 2 and (s.chg_10d or 0.0) >= STRONG_10D
     if sep == "大盘股":
-        return (s.extra.get("float_mv") or 0.0) >= BIG_MV
+        return (s.float_mv or 0.0) >= BIG_MV
     if sep == "科创板":
         return s.limit_pct == 20 and s.code.startswith(("688", "689"))
     if sep == "创业板":
@@ -225,32 +225,15 @@ def build(
 
     for theme, members in groups.items():
         fam = THEME_FAMILY.get(theme, "")
-        # 题材主列表：纯涨停票 → 仅用涨停排序（不套分类模型、不混入非涨停）
+        # 题材主列表：纯涨停票 → 仅用涨停排序（不套分类模型、不混入非涨停）。
+        # 注：题材内「分组」为第二阶段能力，本期仅输出纯涨停排序主列表。
         limit_members = [s for s in members if _is_limit_up(s)]
         flat = sort_limit_up([_stock_dict(s) for s in limit_members])
-
-        # 题材内小组分隔（分类模型）：分组含 涨停+非涨停，组内分别排序
-        gmap = {sep: [] for sep in GROUP_SEP_ALL}
-        eliminate: list[dict] = []
-        for s in members:
-            sd = _stock_dict(s)
-            sep = _main_sep(s, ctx)
-            gmap[sep].append(sd)
-            if _is_eliminate(s):
-                eliminate.append(sd)
-        if eliminate:
-            gmap["待淘汰"] = eliminate
-
-        topic_groups = []
-        for sep in GROUP_SEP_ALL + (["待淘汰"] if eliminate else []):
-            lst = gmap.get(sep)
-            if lst:
-                topic_groups.append({"sep": sep, "stocks": sort_group_combined(lst)})
 
         item = {
             "name": theme,
             "stocks": flat,
-            "groups": topic_groups,
+            "groups": [],
             "count": len(members),
             "family": fam or "其他",
         }
@@ -284,6 +267,26 @@ def build(
     for s in all_stocks:
         tiers[s["boards"]].append(s)
 
+    # ── 顶层 9 大分类方式 ──
+    # 复用题材内相同的 9 个分隔符（最近异动/最近多板/强势股/大盘股/科创板/创业板/
+    # 北交所/最近热股/其他）。每只涨停票可命中多个分类（如 创业板 + 最近多板）；
+    # 命中任一分类即不归入「其他」。「待淘汰」为风险标签，仅作行标记，不计入分类。
+    # 每个分类内按涨停排序（30>20>10 → N降 → M升 → 时间升）。
+    cls_map: dict[str, list] = {sep: [] for sep in GROUP_SEP_ALL}
+    for s in stocks:
+        seps = _assign_group_seps(s, ctx)
+        placed = False
+        for sep in seps:
+            if sep in cls_map:
+                cls_map[sep].append(_stock_dict(s))
+                placed = True
+        if not placed:
+            cls_map["其他"].append(_stock_dict(s))
+    classifications = [
+        {"name": sep, "stocks": sort_limit_up(cls_map[sep]), "count": len(cls_map[sep])}
+        for sep in GROUP_SEP_ALL
+    ]
+
     families_view = {}
     for fam in fam_order:
         if fam in family_map:
@@ -310,6 +313,7 @@ def build(
             "st": len(st_list), "theme_count": len(groups),
         },
         "board_tiers": {str(k): v for k, v in sorted(tiers.items(), key=lambda x: -x[0])},
+        "classifications": classifications,
         "families": families_view,
         "topics": topics,
         "stocks": all_stocks,

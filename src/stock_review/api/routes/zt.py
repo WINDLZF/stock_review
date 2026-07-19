@@ -1,6 +1,7 @@
 """涨停复盘 API：任意平台 → 多源对账 → 统一引擎 → 题材族群看板。"""
 from __future__ import annotations
 
+import concurrent.futures
 import logging
 import re
 from datetime import date
@@ -34,22 +35,36 @@ _PRIMARY = "dxr"
 def _fetch_group_ctx() -> dict:
     """分组上下文（best-effort）：短线侠异动/热股集合，失败降级为空。
 
-    用于「最近异动」「最近热股」小组分隔；解析宽松（提取 A 股 6 位代码特征），
-    缺失/异常时不阻断主流程。
+    用于「最近异动」「最近热股」分类；解析宽松（提取恰好 6 位数字的 A 股代码）。
+    每个接口带 12s 硬性超时护栏，绝不因短线侠接口卡死而拖垮整个复盘 API。
     """
     ctx: dict[str, set] = {"yidong_codes": set(), "hot_codes": set()}
+    stats: dict[str, int] = {"yidong": 0, "hot": 0}
+
+    def _safe(fn):
+        try:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+                return ex.submit(fn).result(timeout=12)
+        except Exception:  # noqa: BLE001
+            return None
+
     try:
         c = get_connector("dxr")
-        ry = c.yidong_all()
-        if ry.ok and ry.data:
-            ctx["yidong_codes"].update(re.findall(r"[6038]\d{5}", str(ry.data)))
-        rh = c.hot_list()
-        if rh.ok and isinstance(rh.data, dict):
+        ry = _safe(lambda: c.yidong_all())
+        if ry and ry.ok and ry.data:
+            codes = re.findall(r"(?<!\d)(\d{6})(?!\d)", str(ry.data))
+            ctx["yidong_codes"].update(codes)
+            stats["yidong"] = len(codes)
+        rh = _safe(lambda: c.hot_list())
+        if rh and rh.ok and isinstance(rh.data, dict):
             for t in rh.data.get("stock_topic", []):
                 txt = f"{t.get('title', '')} {t.get('url', '')} {t.get('name', '')}"
-                ctx["hot_codes"].update(re.findall(r"[6038]\d{5}", txt))
+                codes = re.findall(r"(?<!\d)(\d{6})(?!\d)", txt)
+                ctx["hot_codes"].update(codes)
+                stats["hot"] += len(codes)
     except Exception as e:  # noqa: BLE001
         logger.warning("分组上下文预取失败（降级）: %s", e)
+    ctx["_stats"] = stats
     return ctx
 
 
@@ -92,6 +107,8 @@ def zt_pool(trade_date: date | None = None, source: str = "dxr,dxr_kp,akshare"):
     # 透出对账元数据，前端据此展示一致性/分歧
     report["compare"] = {k: v for k, v in cmp.items() if k != "reconciled"}
     report["sources_used"] = list(records_by_source.keys())
+    # 抓取统计（异动/热股接口是否取到数据，便于排查空桶）
+    report["group_ctx"] = group_ctx.get("_stats", {"yidong": 0, "hot": 0})
     return report
 
 

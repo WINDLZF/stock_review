@@ -61,6 +61,13 @@ body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","M
 .empty .ico { font-size:48px; margin-bottom:12px; }
 .table-panel { background:var(--card); border-radius:var(--radius); border:1px solid var(--border); margin-top:16px; box-shadow:var(--shadow); }
 .table-panel h3 { font-size:13px; padding:10px 14px; border-bottom:1px solid var(--border); background:#fafafa; font-weight:600; }
+.cls-sec { border-bottom:1px dashed var(--border); padding:8px 0; }
+.cls-sec:last-child { border-bottom:none; }
+.cls-head { display:flex; align-items:center; gap:8px; padding:4px 14px; }
+.cls-name { font-weight:700; font-size:13px; color:var(--blue); }
+.cls-name.empty { color:var(--text2); }
+.cls-n { font-size:12px; color:var(--text2); background:#f0f2f5; border-radius:10px; padding:1px 8px; }
+.cls-hint { font-size:11px; color:#bbb; }
 .kpi-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:10px; padding:12px 20px; background:var(--card); border-bottom:1px solid var(--border); }
 .kpi { text-align:center; padding:10px; }
 .kpi .val { font-size:26px; font-weight:700; }
@@ -144,7 +151,52 @@ body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","M
   </div>
 
   <div class="sort-note" v-if="compare && compare.total">
-    📐 排序：涨停 <b>30cm&gt;20cm&gt;10cm</b> → 连板数降序 → 跨度天数升序 → 封板时间升序；非涨停按 今日/5日/10日涨幅加权降序。题材内按分隔符分小组（最近异动&gt;多板&gt;强势股&gt;大盘股&gt;科创/创业/北交&gt;最近热股&gt;其他）。
+    📐 排序：涨停 <b>30cm&gt;20cm&gt;10cm</b> → 连板数降序 → 跨度天数升序 → 封板时间升序；非涨停按 今日/5日/10日涨幅加权降序。
+  </div>
+
+  <div class="table-panel" style="margin-top:16px" v-if="classifications.length">
+    <h3>🗂️ 9大分类方式
+      <span style="font-weight:400;color:var(--text2);font-size:12px">（每只票可命中多类；分类内按涨停排序；「其他」= 未命中任何分类）</span>
+    </h3>
+    <div v-for="c in classifications" :key="c.name" class="cls-sec">
+      <div class="cls-head">
+        <span class="cls-name" :class="{'empty': !c.count}">{{c.name}}</span>
+        <span class="cls-n">{{c.count}}只</span>
+        <span v-if="!c.count" class="cls-hint">（暂无，需补数据）</span>
+      </div>
+      <table v-if="c.stocks.length" class="full">
+        <thead><tr>
+          <th>股票名称</th><th>股票代码</th><th class="r">股价</th><th class="r">涨幅</th><th>涨停类型</th>
+          <th class="r">板数</th><th>连板</th><th>首次封板</th><th>最后封板</th><th class="r">开板</th>
+          <th class="r">封单额</th><th class="r">成交额</th><th class="r">换手率</th><th class="r">实际流通</th>
+          <th class="r">流通市值</th><th class="r">总市值</th><th>异动原因</th>
+        </tr></thead>
+        <tbody>
+          <tr v-for="s in c.stocks" :key="s.code" @click="onStockClick(s)" style="cursor:pointer">
+            <td :class="{'st-name':s.is_st}">{{s.name}} <span v-if="s.limit_pct===30" class="tag tag-kc30">30cm</span><span v-else-if="s.limit_pct===20" class="tag tag-kc20">20cm</span></td>
+            <td style="font-family:monospace;color:var(--text2)">{{s.code}}</td>
+            <td class="r">{{s.price? s.price.toFixed(2):'-'}}</td>
+            <td class="r" :style="{color: s.change_pct>=0?'var(--red)':'var(--green)'}">{{s.change_pct? s.change_pct.toFixed(2)+'%':'-'}}</td>
+            <td><span class="tag tag-word" v-if="s.limit_type&&s.limit_type!=='换手板'">{{s.limit_type}}</span><span v-else>-</span></td>
+            <td class="r"><span :style="{color:s.boards>1?'var(--red)':'',fontWeight:s.boards>1?'700':''}">{{s.boards}}</span></td>
+            <td>{{s.days>1? s.days+'天'+s.boards+'板' : s.boards+'板'}}
+              <span v-if="s.extra && s.extra.board_conflict" class="cmp-badge conf" title="多源连板数分歧">⚠️</span>
+              <span v-else-if="s.extra && s.extra.single_source" class="cmp-badge single" title="孤证">单</span>
+              <span v-else-if="s.extra && s.extra.sources && s.extra.sources.length>1" class="cmp-badge multi" title="多源共识">✓</span></td>
+            <td style="color:var(--text2)">{{s.first_time||'-'}}</td>
+            <td style="color:var(--text2)">{{s.limit_up_time||'-'}}</td>
+            <td class="r">{{s.open_times||0}}</td>
+            <td class="r">{{fmtYi(s.seal_amount)}}</td>
+            <td class="r">{{fmtYi(s.amount)}}</td>
+            <td class="r">{{s.turnover_rate? s.turnover_rate.toFixed(2)+'%':'-'}}</td>
+            <td class="r">{{fmtShares(s.free_float)}}</td>
+            <td class="r">{{fmtYi(s.float_mv)}}</td>
+            <td class="r">{{fmtYi(s.total_mv)}}</td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{s.reason||'-'}} <span v-for="sep in (s.group_seps||[])" :key="sep" class="tag-sep" :class="{'elim':sep==='待淘汰'}" style="margin-left:3px">{{sep}}</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <div class="layout">
@@ -314,6 +366,7 @@ const app = createApp({
     const pool = ref({total:0, firstBoard:0, multiBoard:0, maxBoard:0, themeCount:0, st:0});
     const allStocks = ref([]);
     const topics = ref([]);
+    const classifications = ref([]);
     const hotTopics = ref([]);
     const compare = ref(null);
     const sourcesUsed = ref([]);
@@ -387,6 +440,7 @@ const app = createApp({
           maxBoard: s.max_board||0, themeCount: s.theme_count||0, st: s.st||0,
         };
         allStocks.value = data.stocks || [];
+        classifications.value = data.classifications || [];
         compare.value = data.compare || null;
         sourcesUsed.value = data.sources_used || [];
         topics.value = (data.topics || []).map(t => ({
@@ -406,7 +460,7 @@ const app = createApp({
 
     onMounted(loadData);
 
-    return { loading, searchKw, updateTime, pool, allStocks, topics, hotTopics, compare, sourcesUsed,
+    return { loading, searchKw, updateTime, pool, allStocks, topics, classifications, hotTopics, compare, sourcesUsed,
              echelons, groupedTopics, filteredTopics, filteredStocks,
              familyColor, heatFmt, srcDisp, primarySrc, onStockClick, loadData };
   }
