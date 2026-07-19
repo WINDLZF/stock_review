@@ -18,6 +18,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
+from stock_review.adapters.datasource.dxr_source import _code_to_limit_pct
 from stock_review.domain.entities import Stock
 
 
@@ -87,6 +88,18 @@ def merge_sources(
             final = 1  # 无任何源给连板数，按首板兜底，但标记 unknown
 
         rep.boards = final
+        # 连板跨度天数 M：优先主源，缺失取各源最大观测（保守，不低估连板）
+        days_map = {sn: s.days for sn, s in items if getattr(s, "days", 0)}
+        rep.days = days_map.get(primary) or (max(days_map.values()) if days_map else 1)
+        # 涨停幅度档位由代码唯一确定，覆盖任何源可能的错误
+        rep.limit_pct = _code_to_limit_pct(rep.code)
+        # 合并各源带来的财务/形态字段（如 akshare 的流通市值、封板资金），
+        # 供「大盘股」分组与前端展示——rep 可能来自 dxr（其 extra 无这些数据）
+        for _, s in items:
+            for k in ("float_mv", "total_mv", "turnover", "seal_amount", "amount",
+                      "first_time", "last_time", "zt_stat"):
+                if k in s.extra and k not in rep.extra:
+                    rep.extra[k] = s.extra[k]
         rep.extra["sources"] = srcs
         rep.extra["source_count"] = len(srcs)
         rep.extra["single_source"] = len(srcs) == 1

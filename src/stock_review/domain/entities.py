@@ -44,12 +44,21 @@ class Stock:
     limit_up_time: str = ""
     open_times: int = 0
     limit_type: LimitType = LimitType.NONE
-    boards: int = 1  # 连板数
+    boards: int = 1  # 连板数 N（M天N板里的 N）
+    days: int = 1    # 连板跨度天数 M（M天N板里的 M；首板=1）
+    limit_pct: int = 10  # 涨停幅度档位：10/20/30（主板/双创/北交所）
     reason: str = ""
+
+    # 排序辅助区（非涨停排序用）
+    chg_5d: float = 0.0   # 最近 5 个交易日涨幅 %
+    chg_10d: float = 0.0  # 最近 10 个交易日涨幅 %
 
     # 题材区
     theme: str = ""
     tags: list[str] = field(default_factory=list)
+
+    # 分组分隔符标签（题材内再分组用，见 zt_engine._assign_group_seps）
+    group_seps: list[str] = field(default_factory=list)
 
     # 扩展区（因子、财务等自由挂载）
     extra: dict = field(default_factory=dict)

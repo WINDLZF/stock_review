@@ -81,6 +81,15 @@ body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","M
 .cmp-badge.conf { background:#fff1f0; color:#cf1322; }
 .cmp-badge.single { background:#fff7e6; color:#d46b08; }
 .cmp-badge.multi { background:#e6f7ec; color:#15a257; }
+.tag-kc30 { background:#f9f0ff; color:#722ed1; }
+.tag-kc20 { background:#fff7e6; color:#fa8c16; }
+.tag-sep { display:inline-block; padding:0 5px; border-radius:3px; font-size:10px; margin-left:3px; background:#e6f7ff; color:#1677ff; white-space:nowrap; }
+.tag-sep.elim { background:#fff1f0; color:#cf1322; }
+.grp { margin-top:6px; }
+.grp-head { display:flex; align-items:center; gap:6px; padding:4px 0; font-size:12px; font-weight:600; color:var(--text2); border-top:1px dashed var(--border); }
+.grp-head:first-child { border-top:none; }
+.grp-n { background:var(--blue); color:#fff; border-radius:8px; padding:0 6px; font-size:10px; }
+.sort-note { padding:8px 20px; background:#fbfdff; border-bottom:1px solid var(--border); font-size:11px; color:var(--text2); }
 
 </style>
 </head>
@@ -133,6 +142,9 @@ body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","M
     </div>
   </div>
 
+  <div class="sort-note" v-if="compare && compare.total">
+    📐 排序：涨停 <b>30cm&gt;20cm&gt;10cm</b> → 连板数降序 → 跨度天数升序 → 封板时间升序；非涨停按 今日/5日/10日涨幅加权降序。题材内按分隔符分小组（最近异动&gt;多板&gt;强势股&gt;大盘股&gt;科创/创业/北交&gt;最近热股&gt;其他）。
+  </div>
 
   <div class="layout">
     <div class="main">
@@ -150,16 +162,40 @@ body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","M
             <span class="tcnt">{{t.stocks.length}}只涨停</span>
           </div>
           <div class="members">
-            <table>
-              <thead><tr><th>代码</th><th>名称</th><th>连板</th><th>类型</th><th>封板</th><th>原因</th></tr></thead>
+            <template v-if="t.groups && t.groups.length">
+              <div v-for="g in t.groups" :key="g.sep" class="grp">
+                <div class="grp-head"><span class="grp-sep">{{g.sep}}</span><span class="grp-n">{{g.stocks.length}}只</span></div>
+                <table>
+                  <thead><tr><th>代码</th><th>名称</th><th>连板</th><th>类型</th><th>封板</th><th>原因 / 分组</th></tr></thead>
+                  <tbody>
+                    <tr v-for="s in g.stocks" :key="s.code" @click="onStockClick(s)" style="cursor:pointer">
+                      <td style="font-family:monospace;color:var(--text2)">{{s.code}}</td>
+                      <td :class="{'st-name':s.is_st}">{{s.name}} <span v-if="s.limit_pct===30" class="tag tag-kc30">30cm</span><span v-else-if="s.limit_pct===20" class="tag tag-kc20">20cm</span></td>
+                      <td><span :style="{color:s.boards>1?'var(--red)':'',fontWeight:s.boards>1?'700':''}">{{s.days>1? s.days+'天'+s.boards+'板' : s.boards+'板'}}</span>
+                        <span v-if="s.extra && s.extra.board_conflict" class="cmp-badge conf" title="多源连板数分歧">⚠️分歧</span>
+                        <span v-else-if="s.extra && s.extra.single_source" class="cmp-badge single" title="孤证">单源</span>
+                        <span v-else-if="s.extra && s.extra.sources && s.extra.sources.length>1" class="cmp-badge multi" title="多源共识">✓</span></td>
+                      <td><span class="tag tag-word" v-if="s.limit_type&&s.limit_type!=='换手板'">{{s.limit_type}}</span></td>
+                      <td style="color:var(--text2)">{{s.limit_up_time||'-'}}</td>
+                      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{s.reason||'-'}} <span v-for="sep in (s.group_seps||[])" :key="sep" class="tag-sep" :class="{'elim':sep==='待淘汰'}">{{sep}}</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </template>
+            <table v-else>
+              <thead><tr><th>代码</th><th>名称</th><th>连板</th><th>类型</th><th>封板</th><th>原因 / 分组</th></tr></thead>
               <tbody>
                 <tr v-for="s in t.stocks" :key="s.code" @click="onStockClick(s)" style="cursor:pointer">
                   <td style="font-family:monospace;color:var(--text2)">{{s.code}}</td>
-                  <td :class="{'st-name':s.is_st}">{{s.name}}</td>
-                  <td><span :style="{color:s.boards>1?'var(--red)':''}">{{s.boards}}板</span></td>
+                  <td :class="{'st-name':s.is_st}">{{s.name}} <span v-if="s.limit_pct===30" class="tag tag-kc30">30cm</span><span v-else-if="s.limit_pct===20" class="tag tag-kc20">20cm</span></td>
+                  <td><span :style="{color:s.boards>1?'var(--red)':'',fontWeight:s.boards>1?'700':''}">{{s.days>1? s.days+'天'+s.boards+'板' : s.boards+'板'}}</span>
+                    <span v-if="s.extra && s.extra.board_conflict" class="cmp-badge conf" title="多源连板数分歧">⚠️分歧</span>
+                    <span v-else-if="s.extra && s.extra.single_source" class="cmp-badge single" title="孤证">单源</span>
+                    <span v-else-if="s.extra && s.extra.sources && s.extra.sources.length>1" class="cmp-badge multi" title="多源共识">✓</span></td>
                   <td><span class="tag tag-word" v-if="s.limit_type&&s.limit_type!=='换手板'">{{s.limit_type}}</span></td>
                   <td style="color:var(--text2)">{{s.limit_up_time||'-'}}</td>
-                  <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{s.reason||'-'}}</td>
+                  <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{s.reason||'-'}} <span v-for="sep in (s.group_seps||[])" :key="sep" class="tag-sep" :class="{'elim':sep==='待淘汰'}">{{sep}}</span></td>
                 </tr>
               </tbody>
             </table>
@@ -184,8 +220,8 @@ body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","M
             <tbody>
               <tr v-for="s in filteredStocks" :key="s.code" @click="onStockClick(s)" style="cursor:pointer;border-bottom:1px solid var(--border)">
                 <td style="padding:5px 8px;font-family:monospace;color:var(--text2)">{{s.code}}</td>
-                <td style="padding:5px 8px" :class="{'st-name':s.is_st}">{{s.name}}</td>
-                <td style="padding:5px 8px"><span :style="{color:s.boards>1?'var(--red)':'',fontWeight:s.boards>1?'700':''}">{{s.boards}}板</span>
+                <td style="padding:5px 8px" :class="{'st-name':s.is_st}">{{s.name}} <span v-if="s.limit_pct===30" class="tag tag-kc30">30cm</span><span v-else-if="s.limit_pct===20" class="tag tag-kc20">20cm</span></td>
+                <td style="padding:5px 8px"><span :style="{color:s.boards>1?'var(--red)':'',fontWeight:s.boards>1?'700':''}">{{s.days>1? s.days+'天'+s.boards+'板' : s.boards+'板'}}</span>
                   <span v-if="s.extra && s.extra.board_conflict" class="cmp-badge conf" title="多源连板数分歧，请人工复核">⚠️分歧</span>
                   <span v-else-if="s.extra && s.extra.single_source" class="cmp-badge single" title="仅单一来源出现（孤证）">单源</span>
                   <span v-else-if="s.extra && s.extra.sources && s.extra.sources.length>1" class="cmp-badge multi" title="多源共识">✓多源</span>
@@ -195,8 +231,7 @@ body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","M
                 <td style="padding:5px 8px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{s.reason||'-'}}</td>
                 <td style="padding:5px 8px">{{s.theme||'-'}}</td>
                 <td style="padding:5px 8px">
-                  <span v-if="s.boards>1" class="tag tag-bd">{{s.boards}}连板</span>
-                  <span v-else class="tag tag-first">首板</span>
+                  <span v-for="sep in (s.group_seps||[])" :key="sep" class="tag-sep" :class="{'elim':sep==='待淘汰'}" style="margin-right:3px">{{sep}}</span>
                 </td>
               </tr>
             </tbody>
@@ -303,7 +338,8 @@ const app = createApp({
         compare.value = data.compare || null;
         sourcesUsed.value = data.sources_used || [];
         topics.value = (data.topics || []).map(t => ({
-          name: t.name, stocks: t.stocks || [], family: t.family || '',
+          name: t.name, stocks: t.stocks || [], groups: t.groups || [],
+          family: t.family || '',
           isSt: t.name === 'ST板块', isOther: t.name === '其他',
         }));
         try {

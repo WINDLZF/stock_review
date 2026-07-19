@@ -10,37 +10,6 @@ from stock_review.core.registry import source_registry
 from stock_review.domain.entities import Exchange, LimitType, Stock
 
 
-def _parse_board(text: str) -> int | None:
-    """解析连板描述 → 连板数（取「板」前面的数字，而非「天」前面的天数）。
-
-    旧实现误把 '3天2板' 解析成 3（取了天数），导致连板梯队整体错乱。
-    正确口径：连板数 = 「板」字前的那个数字。
-      - '首板'          → 1
-      - '2连板'         → 2
-      - '3天2板'        → 2
-      - '5天4板'        → 4
-      - '7天4板'        → 4
-    解析不出（空/异常）→ None，交由对账引擎按「未知」处理，绝不臆造。
-    """
-    if not text:
-        return None
-    if "首板" in text:
-        return 1
-    # 'X天Y板'：连板数 = Y
-    m = re.search(r"(\d+)天(\d+)板", text)
-    if m:
-        return int(m.group(2))
-    # 'Y连板'
-    m = re.search(r"(\d+)连板", text)
-    if m:
-        return int(m.group(1))
-    # 兜底 'Y板'
-    m = re.search(r"(\d+)板", text)
-    if m:
-        return int(m.group(1))
-    return None
-
-
 def _code_to_exchange(code: str) -> Exchange:
     if code.startswith("6"):
         return Exchange.SH
@@ -49,6 +18,44 @@ def _code_to_exchange(code: str) -> Exchange:
     if code.startswith(("8", "4")):
         return Exchange.BJ
     return Exchange.UNKNOWN
+
+
+def _code_to_limit_pct(code: str) -> int:
+    """涨停幅度档位：北交所 30cm / 创业板·科创板 20cm / 主板 10cm。
+
+    仅依代码前缀判定，与是否真涨停无关（用于排序的 30>20>10 分层）。
+    """
+    if code.startswith(("688", "689")):
+        return 20  # 科创板
+    if code.startswith(("300", "301")):
+        return 20  # 创业板
+    if code.startswith(("8", "4", "920")):
+        return 30  # 北交所（8/4 开头，920 为新代码段）
+    return 10  # 主板（60/00/30 外的上深主）
+
+
+def _parse_board_full(text: str) -> tuple[int | None, int | None]:
+    """解析'X天Y板' → (天数 M, 连板数 Y)。
+
+    '3天2板' → (3, 2)  | '首板' → (1, 1)  | '2连板' → (2, 2)
+    '7天4板' → (7, 4)  | 解析不出 → (None, None)
+    注意：M 是天数（连板跨度），N 是连板数；排序用 N 降序、M 升序。
+    """
+    if not text:
+        return (None, None)
+    if "首板" in text:
+        return (1, 1)
+    m = re.search(r"(\d+)天(\d+)板", text)
+    if m:
+        return (int(m.group(1)), int(m.group(2)))
+    m = re.search(r"(\d+)连板", text)
+    if m:
+        return (int(m.group(1)), int(m.group(1)))
+    m = re.search(r"(\d+)板", text)
+    if m:
+        n = int(m.group(1))
+        return (n, n)
+    return (None, None)
 
 
 @source_registry.register("dxr")
@@ -94,7 +101,7 @@ class DxrLimitUpSource:
             concept = str(plate_info.get("concept", "")).strip()
             theme = concept or plate
 
-            boards = _parse_board(zt_text) or 0  # 0 = 未知，交对账引擎处理
+            days, boards = _parse_board_full(zt_text)
             lt = LimitType.ONE_WORD if "一字" in zt_text else (
                 LimitType.T_WORD if "T字" in zt_text else LimitType.TURNOVER
             )
@@ -107,7 +114,9 @@ class DxrLimitUpSource:
                 change_pct=10.0,
                 limit_up_time=ft,
                 limit_type=lt,
-                boards=boards,
+                boards=boards or 1,
+                days=days or 1,
+                limit_pct=_code_to_limit_pct(code),
                 reason=reason,
                 theme=theme,
                 tags=[plate, concept] if plate or concept else [],
@@ -182,7 +191,7 @@ class DxrKaipanSource:
             name = str(row[1]).strip()
             board_text = str(row[12]).strip()
             rank = str(row[13]).strip()
-            boards = _parse_board(board_text)  # 可能 None
+            days, boards = _parse_board_full(board_text)
             stocks.append(Stock(
                 code=code,
                 name=name,
@@ -190,7 +199,9 @@ class DxrKaipanSource:
                 price=float(row[5]) if isinstance(row[5], (int, float)) else 0.0,
                 change_pct=chg,
                 limit_type=LimitType.TURNOVER,
-                boards=boards or 0,  # 0 表示"未知"，交由对账引擎处理
+                boards=boards or 1,
+                days=days or 1,
+                limit_pct=_code_to_limit_pct(code),
                 reason="",
                 theme="",
                 tags=[rank] if rank else [],

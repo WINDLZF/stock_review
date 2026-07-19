@@ -11,6 +11,7 @@ from typing import Any
 
 import pandas as pd
 
+from stock_review.adapters.datasource.dxr_source import _code_to_limit_pct, _parse_board_full
 from stock_review.core.registry import source_registry
 from stock_review.domain.entities import Bar, LimitType, Quote, Stock
 from stock_review.domain.ports import MarketDataSource
@@ -98,6 +99,10 @@ class AKShareSource:
             last_t = str(r.get("最后封板时间", "") or "")
             open_times = int(r.get("炸板次数", 0) or 0)
             boards = int(r.get("连板数", 1) or 1)
+            # 连板跨度天数 M：优先从"涨停统计"(如 '3天3板')解析，缺失则退化≈连板数
+            zt_stat = str(r.get("涨停统计", "") or "")
+            stat_days, _ = _parse_board_full(zt_stat)
+            days = stat_days or boards
             # 轻量形态判定：仅依据拉取的封板时间，不做行情计算
             if first_t and last_t and first_t == last_t and first_t <= "093000":
                 limit_type = LimitType.ONE_WORD
@@ -115,6 +120,8 @@ class AKShareSource:
                     open_times=open_times,
                     limit_type=limit_type,
                     boards=boards,
+                    days=days,
+                    limit_pct=_code_to_limit_pct(code),
                     reason=industry,
                     theme=industry,
                     extra={

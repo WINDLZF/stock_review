@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import date
 
 from fastapi import APIRouter
 
 from stock_review.adapters.datasource.akshare_source import AKShareSource
 from stock_review.adapters.datasource.dxr_source import DxrKaipanSource, DxrLimitUpSource
+from stock_review.adapters.platforms import get_connector
+from stock_review.services.enrich import enrich_history
 from stock_review.services.zt_compare import merge_sources
 from stock_review.services.zt_engine import build as build_report
 
@@ -26,6 +29,28 @@ _SOURCES = {
     "akshare": AKShareSource,
 }
 _PRIMARY = "dxr"
+
+
+def _fetch_group_ctx() -> dict:
+    """分组上下文（best-effort）：短线侠异动/热股集合，失败降级为空。
+
+    用于「最近异动」「最近热股」小组分隔；解析宽松（提取 A 股 6 位代码特征），
+    缺失/异常时不阻断主流程。
+    """
+    ctx: dict[str, set] = {"yidong_codes": set(), "hot_codes": set()}
+    try:
+        c = get_connector("dxr")
+        ry = c.yidong_all()
+        if ry.ok and ry.data:
+            ctx["yidong_codes"].update(re.findall(r"[6038]\d{5}", str(ry.data)))
+        rh = c.hot_list()
+        if rh.ok and isinstance(rh.data, dict):
+            for t in rh.data.get("stock_topic", []):
+                txt = f"{t.get('title', '')} {t.get('url', '')} {t.get('name', '')}"
+                ctx["hot_codes"].update(re.findall(r"[6038]\d{5}", txt))
+    except Exception as e:  # noqa: BLE001
+        logger.warning("分组上下文预取失败（降级）: %s", e)
+    return ctx
 
 
 @router.get("/pool")
@@ -52,7 +77,18 @@ def zt_pool(trade_date: date | None = None, source: str = "dxr,dxr_kp,akshare"):
         return build_report([], trade_date)
 
     cmp = merge_sources(records_by_source, primary=_PRIMARY)
-    report = build_report(cmp["reconciled"], trade_date)
+    reconciled = cmp["reconciled"]
+
+    # 历史涨幅富集（非涨停排序 func 用），失败静默降级（不阻断主流程）
+    try:
+        enrich_history(reconciled, td)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("历史涨幅富集失败（降级）: %s", e)
+
+    # 分组上下文：异动/热股集合（best-effort，失败降级为空）
+    group_ctx = _fetch_group_ctx()
+
+    report = build_report(reconciled, trade_date, group_ctx=group_ctx)
     # 透出对账元数据，前端据此展示一致性/分歧
     report["compare"] = {k: v for k, v in cmp.items() if k != "reconciled"}
     report["sources_used"] = list(records_by_source.keys())
