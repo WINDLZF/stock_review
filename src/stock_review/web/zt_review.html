@@ -42,6 +42,7 @@ body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","M
 .members table { width:100%; border-collapse:collapse; font-size:12px; }
 .members th { padding:6px 8px; background:#fafafa; border-bottom:2px solid var(--border); text-align:left; font-weight:600; }
 .members td { padding:5px 8px; border-bottom:1px solid var(--border); }
+.members th.r, .members td.r { text-align:right; }
 .members tr:hover { background:#fafafa; }
 .st-name { color:var(--purple); font-weight:600; }
 .tag { display:inline-block; padding:1px 5px; border-radius:3px; font-size:10px; margin:1px 3px 1px 0; }
@@ -161,41 +162,73 @@ body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","M
             <span class="tname">{{t.name}}</span>
             <span class="tcnt">{{t.stocks.length}}只涨停</span>
           </div>
-          <div class="members">
+          <div class="members" style="overflow-x:auto">
             <template v-if="t.groups && t.groups.length">
               <div v-for="g in t.groups" :key="g.sep" class="grp">
                 <div class="grp-head"><span class="grp-sep">{{g.sep}}</span><span class="grp-n">{{g.stocks.length}}只</span></div>
-                <table>
-                  <thead><tr><th>代码</th><th>名称</th><th>连板</th><th>类型</th><th>封板</th><th>原因 / 分组</th></tr></thead>
+                <table class="full">
+                  <thead><tr>
+                    <th>股票名称</th><th>股票代码</th><th class="r">股价</th><th class="r">涨幅</th><th>涨停类型</th>
+                    <th class="r">板数</th><th>连板</th><th>首次封板</th><th>最后封板</th><th class="r">开板</th>
+                    <th class="r">封单额</th><th class="r">成交额</th><th class="r">换手率</th><th class="r">实际流通</th>
+                    <th class="r">流通市值</th><th class="r">总市值</th><th>异动原因</th>
+                  </tr></thead>
                   <tbody>
                     <tr v-for="s in g.stocks" :key="s.code" @click="onStockClick(s)" style="cursor:pointer">
-                      <td style="font-family:monospace;color:var(--text2)">{{s.code}}</td>
                       <td :class="{'st-name':s.is_st}">{{s.name}} <span v-if="s.limit_pct===30" class="tag tag-kc30">30cm</span><span v-else-if="s.limit_pct===20" class="tag tag-kc20">20cm</span></td>
-                      <td><span :style="{color:s.boards>1?'var(--red)':'',fontWeight:s.boards>1?'700':''}">{{s.days>1? s.days+'天'+s.boards+'板' : s.boards+'板'}}</span>
-                        <span v-if="s.extra && s.extra.board_conflict" class="cmp-badge conf" title="多源连板数分歧">⚠️分歧</span>
-                        <span v-else-if="s.extra && s.extra.single_source" class="cmp-badge single" title="孤证">单源</span>
+                      <td style="font-family:monospace;color:var(--text2)">{{s.code}}</td>
+                      <td class="r">{{s.price? s.price.toFixed(2):'-'}}</td>
+                      <td class="r" :style="{color: s.change_pct>=0?'var(--red)':'var(--green)'}">{{s.change_pct? s.change_pct.toFixed(2)+'%':'-'}}</td>
+                      <td><span class="tag tag-word" v-if="s.limit_type&&s.limit_type!=='换手板'">{{s.limit_type}}</span><span v-else>-</span></td>
+                      <td class="r"><span :style="{color:s.boards>1?'var(--red)':'',fontWeight:s.boards>1?'700':''}">{{s.boards}}</span></td>
+                      <td>{{s.days>1? s.days+'天'+s.boards+'板' : s.boards+'板'}}
+                        <span v-if="s.extra && s.extra.board_conflict" class="cmp-badge conf" title="多源连板数分歧">⚠️</span>
+                        <span v-else-if="s.extra && s.extra.single_source" class="cmp-badge single" title="孤证">单</span>
                         <span v-else-if="s.extra && s.extra.sources && s.extra.sources.length>1" class="cmp-badge multi" title="多源共识">✓</span></td>
-                      <td><span class="tag tag-word" v-if="s.limit_type&&s.limit_type!=='换手板'">{{s.limit_type}}</span></td>
+                      <td style="color:var(--text2)">{{s.first_time||'-'}}</td>
                       <td style="color:var(--text2)">{{s.limit_up_time||'-'}}</td>
-                      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{s.reason||'-'}} <span v-for="sep in (s.group_seps||[])" :key="sep" class="tag-sep" :class="{'elim':sep==='待淘汰'}">{{sep}}</span></td>
+                      <td class="r">{{s.open_times||0}}</td>
+                      <td class="r">{{fmtYi(s.seal_amount)}}</td>
+                      <td class="r">{{fmtYi(s.amount)}}</td>
+                      <td class="r">{{s.turnover_rate? s.turnover_rate.toFixed(2)+'%':'-'}}</td>
+                      <td class="r">{{fmtShares(s.free_float)}}</td>
+                      <td class="r">{{fmtYi(s.float_mv)}}</td>
+                      <td class="r">{{fmtYi(s.total_mv)}}</td>
+                      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{s.reason||'-'}} <span v-for="sep in (s.group_seps||[])" :key="sep" class="tag-sep" :class="{'elim':sep==='待淘汰'}" style="margin-left:3px">{{sep}}</span></td>
                     </tr>
                   </tbody>
                 </table>
               </div>
             </template>
-            <table v-else>
-              <thead><tr><th>代码</th><th>名称</th><th>连板</th><th>类型</th><th>封板</th><th>原因 / 分组</th></tr></thead>
+            <table v-else class="full">
+              <thead><tr>
+                <th>股票名称</th><th>股票代码</th><th class="r">股价</th><th class="r">涨幅</th><th>涨停类型</th>
+                <th class="r">板数</th><th>连板</th><th>首次封板</th><th>最后封板</th><th class="r">开板</th>
+                <th class="r">封单额</th><th class="r">成交额</th><th class="r">换手率</th><th class="r">实际流通</th>
+                <th class="r">流通市值</th><th class="r">总市值</th><th>异动原因</th>
+              </tr></thead>
               <tbody>
                 <tr v-for="s in t.stocks" :key="s.code" @click="onStockClick(s)" style="cursor:pointer">
-                  <td style="font-family:monospace;color:var(--text2)">{{s.code}}</td>
                   <td :class="{'st-name':s.is_st}">{{s.name}} <span v-if="s.limit_pct===30" class="tag tag-kc30">30cm</span><span v-else-if="s.limit_pct===20" class="tag tag-kc20">20cm</span></td>
-                  <td><span :style="{color:s.boards>1?'var(--red)':'',fontWeight:s.boards>1?'700':''}">{{s.days>1? s.days+'天'+s.boards+'板' : s.boards+'板'}}</span>
-                    <span v-if="s.extra && s.extra.board_conflict" class="cmp-badge conf" title="多源连板数分歧">⚠️分歧</span>
-                    <span v-else-if="s.extra && s.extra.single_source" class="cmp-badge single" title="孤证">单源</span>
+                  <td style="font-family:monospace;color:var(--text2)">{{s.code}}</td>
+                  <td class="r">{{s.price? s.price.toFixed(2):'-'}}</td>
+                  <td class="r" :style="{color: s.change_pct>=0?'var(--red)':'var(--green)'}">{{s.change_pct? s.change_pct.toFixed(2)+'%':'-'}}</td>
+                  <td><span class="tag tag-word" v-if="s.limit_type&&s.limit_type!=='换手板'">{{s.limit_type}}</span><span v-else>-</span></td>
+                  <td class="r"><span :style="{color:s.boards>1?'var(--red)':'',fontWeight:s.boards>1?'700':''}">{{s.boards}}</span></td>
+                  <td>{{s.days>1? s.days+'天'+s.boards+'板' : s.boards+'板'}}
+                    <span v-if="s.extra && s.extra.board_conflict" class="cmp-badge conf" title="多源连板数分歧">⚠️</span>
+                    <span v-else-if="s.extra && s.extra.single_source" class="cmp-badge single" title="孤证">单</span>
                     <span v-else-if="s.extra && s.extra.sources && s.extra.sources.length>1" class="cmp-badge multi" title="多源共识">✓</span></td>
-                  <td><span class="tag tag-word" v-if="s.limit_type&&s.limit_type!=='换手板'">{{s.limit_type}}</span></td>
+                  <td style="color:var(--text2)">{{s.first_time||'-'}}</td>
                   <td style="color:var(--text2)">{{s.limit_up_time||'-'}}</td>
-                  <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{s.reason||'-'}} <span v-for="sep in (s.group_seps||[])" :key="sep" class="tag-sep" :class="{'elim':sep==='待淘汰'}">{{sep}}</span></td>
+                  <td class="r">{{s.open_times||0}}</td>
+                  <td class="r">{{fmtYi(s.seal_amount)}}</td>
+                  <td class="r">{{fmtYi(s.amount)}}</td>
+                  <td class="r">{{s.turnover_rate? s.turnover_rate.toFixed(2)+'%':'-'}}</td>
+                  <td class="r">{{fmtShares(s.free_float)}}</td>
+                  <td class="r">{{fmtYi(s.float_mv)}}</td>
+                  <td class="r">{{fmtYi(s.total_mv)}}</td>
+                  <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{s.reason||'-'}} <span v-for="sep in (s.group_seps||[])" :key="sep" class="tag-sep" :class="{'elim':sep==='待淘汰'}" style="margin-left:3px">{{sep}}</span></td>
                 </tr>
               </tbody>
             </table>
@@ -208,31 +241,46 @@ body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","M
         <div style="overflow-x:auto">
           <table style="width:100%;border-collapse:collapse;font-size:12px">
             <thead><tr>
-              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:left">代码</th>
-              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:left">名称</th>
-              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:left">连板</th>
-              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:left">类型</th>
-              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:left">封板</th>
-              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:left">原因</th>
-              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:left">板块</th>
-              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:left">标签</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:left;white-space:nowrap">股票名称</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:left;white-space:nowrap">股票代码</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:right;white-space:nowrap">股价</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:right;white-space:nowrap">涨幅</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:left;white-space:nowrap">涨停类型</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:right;white-space:nowrap">板数</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:left;white-space:nowrap">连板</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:left;white-space:nowrap">首次封板</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:left;white-space:nowrap">最后封板</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:right;white-space:nowrap">开板</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:right;white-space:nowrap">封单额</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:right;white-space:nowrap">成交额</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:right;white-space:nowrap">换手率</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:right;white-space:nowrap">实际流通</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:right;white-space:nowrap">流通市值</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:right;white-space:nowrap">总市值</th>
+              <th style="padding:6px 8px;background:#fafafa;border-bottom:2px solid var(--border);text-align:left;white-space:nowrap">异动原因</th>
             </tr></thead>
             <tbody>
               <tr v-for="s in filteredStocks" :key="s.code" @click="onStockClick(s)" style="cursor:pointer;border-bottom:1px solid var(--border)">
-                <td style="padding:5px 8px;font-family:monospace;color:var(--text2)">{{s.code}}</td>
-                <td style="padding:5px 8px" :class="{'st-name':s.is_st}">{{s.name}} <span v-if="s.limit_pct===30" class="tag tag-kc30">30cm</span><span v-else-if="s.limit_pct===20" class="tag tag-kc20">20cm</span></td>
-                <td style="padding:5px 8px"><span :style="{color:s.boards>1?'var(--red)':'',fontWeight:s.boards>1?'700':''}">{{s.days>1? s.days+'天'+s.boards+'板' : s.boards+'板'}}</span>
-                  <span v-if="s.extra && s.extra.board_conflict" class="cmp-badge conf" title="多源连板数分歧，请人工复核">⚠️分歧</span>
-                  <span v-else-if="s.extra && s.extra.single_source" class="cmp-badge single" title="仅单一来源出现（孤证）">单源</span>
-                  <span v-else-if="s.extra && s.extra.sources && s.extra.sources.length>1" class="cmp-badge multi" title="多源共识">✓多源</span>
-                </td>
-                <td style="padding:5px 8px"><span class="tag tag-word" v-if="s.limit_type&&s.limit_type!=='换手板'">{{s.limit_type}}</span></td>
-                <td style="padding:5px 8px;color:var(--text2)">{{s.limit_up_time||'-'}}</td>
-                <td style="padding:5px 8px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{s.reason||'-'}}</td>
-                <td style="padding:5px 8px">{{s.theme||'-'}}</td>
-                <td style="padding:5px 8px">
-                  <span v-for="sep in (s.group_seps||[])" :key="sep" class="tag-sep" :class="{'elim':sep==='待淘汰'}" style="margin-right:3px">{{sep}}</span>
-                </td>
+                <td style="padding:5px 8px;white-space:nowrap" :class="{'st-name':s.is_st}">{{s.name}} <span v-if="s.limit_pct===30" class="tag tag-kc30">30cm</span><span v-else-if="s.limit_pct===20" class="tag tag-kc20">20cm</span></td>
+                <td style="padding:5px 8px;font-family:monospace;color:var(--text2);white-space:nowrap">{{s.code}}</td>
+                <td style="padding:5px 8px;text-align:right;white-space:nowrap">{{s.price? s.price.toFixed(2):'-'}}</td>
+                <td style="padding:5px 8px;text-align:right;white-space:nowrap" :style="{color: s.change_pct>=0?'var(--red)':'var(--green)'}">{{s.change_pct? s.change_pct.toFixed(2)+'%':'-'}}</td>
+                <td style="padding:5px 8px;white-space:nowrap"><span class="tag tag-word" v-if="s.limit_type&&s.limit_type!=='换手板'">{{s.limit_type}}</span><span v-else>-</span></td>
+                <td style="padding:5px 8px;text-align:right;white-space:nowrap"><span :style="{color:s.boards>1?'var(--red)':'',fontWeight:s.boards>1?'700':''}">{{s.boards}}</span></td>
+                <td style="padding:5px 8px;white-space:nowrap">{{s.days>1? s.days+'天'+s.boards+'板' : s.boards+'板'}}
+                  <span v-if="s.extra && s.extra.board_conflict" class="cmp-badge conf" title="多源连板数分歧，请人工复核">⚠️</span>
+                  <span v-else-if="s.extra && s.extra.single_source" class="cmp-badge single" title="仅单一来源出现（孤证）">单</span>
+                  <span v-else-if="s.extra && s.extra.sources && s.extra.sources.length>1" class="cmp-badge multi" title="多源共识">✓</span></td>
+                <td style="padding:5px 8px;color:var(--text2);white-space:nowrap">{{s.first_time||'-'}}</td>
+                <td style="padding:5px 8px;color:var(--text2);white-space:nowrap">{{s.limit_up_time||'-'}}</td>
+                <td style="padding:5px 8px;text-align:right;white-space:nowrap">{{s.open_times||0}}</td>
+                <td style="padding:5px 8px;text-align:right;white-space:nowrap">{{fmtYi(s.seal_amount)}}</td>
+                <td style="padding:5px 8px;text-align:right;white-space:nowrap">{{fmtYi(s.amount)}}</td>
+                <td style="padding:5px 8px;text-align:right;white-space:nowrap">{{s.turnover_rate? s.turnover_rate.toFixed(2)+'%':'-'}}</td>
+                <td style="padding:5px 8px;text-align:right;white-space:nowrap">{{fmtShares(s.free_float)}}</td>
+                <td style="padding:5px 8px;text-align:right;white-space:nowrap">{{fmtYi(s.float_mv)}}</td>
+                <td style="padding:5px 8px;text-align:right;white-space:nowrap">{{fmtYi(s.total_mv)}}</td>
+                <td style="padding:5px 8px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{s.reason||'-'}} <span v-for="sep in (s.group_seps||[])" :key="sep" class="tag-sep" :class="{'elim':sep==='待淘汰'}" style="margin-left:3px">{{sep}}</span></td>
               </tr>
             </tbody>
           </table>
@@ -275,6 +323,10 @@ const app = createApp({
     function srcDisp(s) { return SRC_DISP[s] || s; }
     function familyColor(fam) { return FAMILY_COLORS[fam] || '#909399'; }
     function heatFmt(v) { if (!v) return ''; const n = Number(v); return n >= 10000 ? (n/10000).toFixed(1)+'万' : n+''; }
+    // 元 → 亿（封单额/成交额/市值）
+    function fmtYi(v) { const n = Number(v); if (!n) return '-'; return (n/1e8).toFixed(2) + '亿'; }
+    // 股 → 亿股/万股（实际流通）
+    function fmtShares(v) { const n = Number(v); if (!n) return '-'; return n >= 1e8 ? (n/1e8).toFixed(2)+'亿股' : (n/1e4).toFixed(0)+'万股'; }
     function onStockClick(s) { window.open('https://www.iwencai.com/unifiedwap/result?w='+s.code+'&querytype=stock', '_blank'); }
 
     const echelons = computed(() => {

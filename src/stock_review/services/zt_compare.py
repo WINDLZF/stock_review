@@ -93,6 +93,18 @@ def merge_sources(
         rep.days = days_map.get(primary) or (max(days_map.values()) if days_map else 1)
         # 涨停幅度档位由代码唯一确定，覆盖任何源可能的错误
         rep.limit_pct = _code_to_limit_pct(rep.code)
+        # 合并财务/行情字段（封单额/成交额/换手率/市值等）：主源(dxr)较稀疏，
+        # 优先采用任一源的非零值（akshare 提供真实财务），保证明细表字段齐全
+        for fld in ("price", "first_time", "seal_amount", "amount",
+                    "turnover_rate", "float_mv", "total_mv", "free_float"):
+            for _, s in items:
+                v = getattr(s, fld, None)
+                if v:
+                    setattr(rep, fld, v)
+                    break
+        # 实际流通股本 = 流通市值 / 股价（二者齐备时推导，dxr 无该字段）
+        if not rep.free_float and rep.float_mv and rep.price:
+            rep.free_float = rep.float_mv / rep.price
         # 合并各源带来的财务/形态字段（如 akshare 的流通市值、封板资金），
         # 供「大盘股」分组与前端展示——rep 可能来自 dxr（其 extra 无这些数据）
         for _, s in items:

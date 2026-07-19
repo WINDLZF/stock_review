@@ -48,6 +48,13 @@ class Stock:
     days: int = 1    # 连板跨度天数 M（M天N板里的 M；首板=1）
     limit_pct: int = 10  # 涨停幅度档位：10/20/30（主板/双创/北交所）
     reason: str = ""
+    first_time: str = ""    # 首次封板时间（HH:MM:SS）
+    seal_amount: float = 0.0  # 封单额（元）
+    amount: float = 0.0      # 成交额（元）
+    turnover_rate: float = 0.0  # 换手率（%）
+    free_float: float = 0.0  # 实际流通股本（股）
+    float_mv: float = 0.0    # 流通市值（元）
+    total_mv: float = 0.0    # 总市值（元）
 
     # 排序辅助区（非涨停排序用）
     chg_5d: float = 0.0   # 最近 5 个交易日涨幅 %
