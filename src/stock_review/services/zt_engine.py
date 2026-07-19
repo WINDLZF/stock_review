@@ -5,10 +5,12 @@
   - 题材分类规则来自 theme_config.py（用户知识库）
   - 族群聚合用于前端展示，排序/分组规则见下方
 
-排序规则（用户设计，先分类再排序）：
-  1) 涨停排序：涨停幅度 30cm>20cm>10cm → 连板数 N 降序 → 跨度天数 M 升序 → 封板时间升序
-  2) 非涨停排序：strength = 0.5*今日涨幅 + 0.3*近5日 + 0.2*近10日，降序
-  3) 题材/分组内部：涨停股用涨停排序、非涨停股用非涨停排序，涨停在前
+排序规则（用户设计，先分类再排序）—— 两级模型：
+  ▸ 题材主列表（纯涨停票）：仅用「涨停排序」
+      涨停排序：30cm>20cm>10cm → 连板数 N 降序 → 跨度天数 M 升序 → 封板时间升序
+  ▸ 题材内分组（涨停+非涨停混合）：采用「分类模型」，每个分组内
+      涨停股 → 涨停排序；非涨停股 → 非涨停排序；涨停在前
+      非涨停排序：strength = 0.5*今日涨幅 + 0.3*近5日 + 0.2*近10日，降序
 
 分组规则（题材内再分小组，分隔符按用户优先级）：
   最近异动 > 最近多板 > 强势股 > 大盘股 > 科创板 > 创业板 > 北交所 > 最近热股 > (其他兜底)
@@ -100,13 +102,27 @@ def _non_limit_key(d: dict) -> float:
     return -_strength(d)
 
 
-def _sort_group(items: list[dict]) -> list[dict]:
-    """组内排序：涨停股用涨停排序、非涨停股用非涨停排序，涨停在前。"""
+def sort_limit_up(items: list[dict]) -> list[dict]:
+    """涨停排序：30cm>20cm>10cm → 连板数 N 降序 → 跨度天数 M 升序 → 封板时间升序。
+    仅用于纯涨停票（题材主列表、连板梯队等），绝不混入非涨停股。
+    """
+    return sorted(items, key=_limit_up_key)
+
+
+def sort_non_limit_up(items: list[dict]) -> list[dict]:
+    """非涨停排序：strength 降序（0.5今日 + 0.3近5日 + 0.2近10日）。
+    仅用于非涨停票。
+    """
+    return sorted(items, key=_non_limit_key)
+
+
+def sort_group_combined(items: list[dict]) -> list[dict]:
+    """分类模型（题材内分组）：涨停股用涨停排序、非涨停股用非涨停排序，涨停在前。
+    一个分组可能同时含涨停与非涨停票，二者分别排序再拼接。
+    """
     limit = [d for d in items if _is_limit_up(d)]
     non = [d for d in items if not _is_limit_up(d)]
-    limit.sort(key=_limit_up_key)
-    non.sort(key=_non_limit_key)
-    return limit + non
+    return sort_limit_up(limit) + sort_non_limit_up(non)
 
 
 def _stock_dict(s: Stock) -> dict[str, Any]:
@@ -204,7 +220,11 @@ def build(
 
     for theme, members in groups.items():
         fam = THEME_FAMILY.get(theme, "")
-        # 题材内小组分隔
+        # 题材主列表：纯涨停票 → 仅用涨停排序（不套分类模型、不混入非涨停）
+        limit_members = [s for s in members if _is_limit_up(s)]
+        flat = sort_limit_up([_stock_dict(s) for s in limit_members])
+
+        # 题材内小组分隔（分类模型）：分组含 涨停+非涨停，组内分别排序
         gmap = {sep: [] for sep in GROUP_SEP_ALL}
         eliminate: list[dict] = []
         for s in members:
@@ -220,11 +240,11 @@ def build(
         for sep in GROUP_SEP_ALL + (["待淘汰"] if eliminate else []):
             lst = gmap.get(sep)
             if lst:
-                topic_groups.append({"sep": sep, "stocks": _sort_group(lst)})
+                topic_groups.append({"sep": sep, "stocks": sort_group_combined(lst)})
 
         item = {
             "name": theme,
-            "stocks": _sort_group([_stock_dict(s) for s in members]),
+            "stocks": flat,
             "groups": topic_groups,
             "count": len(members),
             "family": fam or "其他",
@@ -250,7 +270,7 @@ def build(
     if st_group:
         topics.append(st_group)
 
-    all_stocks = _sort_group([_stock_dict(s) for s in stocks])
+    all_stocks = sort_limit_up([_stock_dict(s) for s in stocks])
     boards = [s.boards for s in stocks]
     first = sum(1 for b in boards if b == 1)
 
